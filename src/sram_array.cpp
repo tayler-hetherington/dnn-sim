@@ -11,9 +11,11 @@
 
 #include "sram_array.h"
 
-sram_array::sram_array(unsigned line_size, unsigned num_lines, unsigned bit_width,
+sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, unsigned bit_width,
                        unsigned num_read_write_ports, unsigned num_cycle_per_access) {
     
+    m_sram_type = type;
+
     m_line_size = line_size;
     m_n_lines = num_lines;
     m_bit_width = bit_width;
@@ -52,21 +54,23 @@ void sram_array::cycle() {
     for(unsigned i=0; i<m_n_rw_ports; ++i){
         if(m_ports[i].m_is_busy){
             m_ports[i].m_cur_access_cycle++;
-            if(m_ports[i].m_cur_access_cycle > m_cycles_per_access) {
+            if(m_ports[i].m_cur_access_cycle >= m_cycles_per_access) {
                 m_ports[i].m_is_busy = false;
+                m_ports[i].m_op->set_sram_op_complete(m_sram_type); // Read completed
+                m_ports[i].m_op = NULL;
             }
         }
     }
 }
 
 // Reads a line from the SRAM array
-bool sram_array::read(unsigned address, unsigned size){
+bool sram_array::read(pipe_op* op){
 
     // Check line is valid
-    if(!check_addr(address))
+    if(!check_addr(op->get_sram_addr(m_sram_type)))
         return false;
     
-    unsigned index = (address / (m_bit_width/2) ) % m_n_lines;
+    unsigned index = (op->get_sram_addr(m_sram_type) / (m_bit_width/2) ) % m_n_lines;
     
     if(!m_lines[index].m_valid)
         return false;
@@ -78,13 +82,15 @@ bool sram_array::read(unsigned address, unsigned size){
             m_ports[i].m_is_read = true;
             m_ports[i].m_cur_access_cycle = 0;
             
+            m_ports[i].m_op = op;
+            m_ports[i].m_op->set_sram_op_pending(m_sram_type); // Read not completed yet
+
             m_n_reads++;
             break;
         }
     }
     
     return true;
-    
 }
 
 // Reads to a line in the SRAM array
@@ -108,10 +114,15 @@ bool sram_array::write(unsigned address, unsigned size){
             break;
         }
     }
-    
-    
     return true;
 }
+
+bool sram_array::write(pipe_op *op){
+    
+    
+    return false;
+}
+
 
 bool sram_array::check_addr(unsigned address) {
     // Check address alignment
