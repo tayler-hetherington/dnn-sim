@@ -17,7 +17,9 @@
 #include <stdlib.h>
 #include <cstddef>
 #include <queue>
+#include <unistd.h>
 #include <assert.h>
+#include <pthread.h>
 
 enum sram_type {
     NBin = 0,

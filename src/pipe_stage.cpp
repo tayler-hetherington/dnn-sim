@@ -56,7 +56,18 @@ nfu_1::~nfu_1(){
 }
 
 void nfu_1::cycle(){
-
+    pipe_op *op;
+    std::cout << "NFU_1: cycle" << std::endl;
+    if(!input_op->empty()){
+        // Only push through if both SRAM reads are complete
+        std::cout << "NFU_1: input non-empty" << std::endl;
+        op = input_op->front();
+        if( op->is_read_complete() ){
+            std::cout << "NFU_1: SRAM reads complete, pushing through" << std::endl;
+            input_op->pop();
+            output_op->push(op);
+        }
+    }   
 }
 
 //////////////////
@@ -69,7 +80,14 @@ nfu_2::~nfu_2(){
 
 }
 void nfu_2::cycle(){
-
+    pipe_op *op;
+    std::cout << "NFU_2: cycle" << std::endl;
+    if(!input_op->empty()){
+        std::cout << "NFU_2: input non-empty" << std::endl;
+        op = input_op->front();
+        input_op->pop();
+        output_op->push(op);
+    }
 }
 
 //////////////////
@@ -82,5 +100,13 @@ nfu_3::~nfu_3(){
 
 }
 void nfu_3::cycle(){
-
+    pipe_op *op;
+    std::cout << "NFU_3: cycle" << std::endl;
+    if(!input_op->empty()){
+        std::cout << "NFU_3: input non-empty" << std::endl;
+        op = input_op->front();
+        input_op->pop();
+        op->set_write();
+        output_op->push(op);
+    }
 }

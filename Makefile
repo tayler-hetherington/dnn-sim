@@ -22,9 +22,10 @@ endif
 all: dir $(TARGET)
 
 dir:
+	@rm -rf $(OBJ)
 	@mkdir -p $(OBJ)
 
-$(OBJ)/%.o: $(SRC)/%.cpp $(SRC)/%.h
+$(OBJ)/%.o: $(SRC)/%.cpp
 	$(CPP) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJ_FILES)

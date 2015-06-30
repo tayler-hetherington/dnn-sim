@@ -21,12 +21,20 @@ public:
 
     void set_sram_op_pending(sram_type type);
     void set_sram_op_complete(sram_type type);
+    
+    bool is_read_complete();
+    bool is_write_complete();
 
     unsigned get_sram_addr(sram_type type);
     unsigned get_sram_size(sram_type type);
 
+    bool is_read();
+    void set_read();
+    void set_write();
+    
 private:
 
+    bool m_is_read;
     sram_op m_sram_op[NUM_SRAM_TYPE];
     bool sram_op_complete[NUM_SRAM_TYPE];
 };

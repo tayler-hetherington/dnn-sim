@@ -12,7 +12,7 @@
 #include "sram_array.h"
 
 sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, unsigned bit_width,
-                       unsigned num_read_write_ports, unsigned num_cycle_per_access) {
+                       unsigned num_read_write_ports, unsigned num_cycle_per_access, pipe_reg *p_reg) {
     
     m_sram_type = type;
 
@@ -21,6 +21,8 @@ sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, u
     m_bit_width = bit_width;
     m_n_rw_ports = num_read_write_ports;
     m_cycles_per_access = num_cycle_per_access;
+    
+    m_pipe_reg = p_reg;
     
     m_n_reads = 0;
     m_n_writes = 0;
@@ -36,7 +38,9 @@ sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, u
     // Setup lines
     m_lines = new sram_line[m_n_lines];
     for(unsigned i=0; i<m_n_lines; ++i) {
-        m_lines[i].m_valid = false;
+//        m_lines[i].m_valid = false;
+        // FIXME:
+        m_lines[i].m_valid = true;
     }
     
     
@@ -51,14 +55,36 @@ sram_array::~sram_array() {
 }
 
 void sram_array::cycle() {
+    bool all_ports_busy = true;
+    
+    std::cout << "SRAM cycle (" << m_sram_type << ")" << std::endl;
     for(unsigned i=0; i<m_n_rw_ports; ++i){
         if(m_ports[i].m_is_busy){
+            std::cout << "SRAM port " << i << " is busy, increment access" << std::endl;
             m_ports[i].m_cur_access_cycle++;
             if(m_ports[i].m_cur_access_cycle >= m_cycles_per_access) {
+                std::cout << "SRAM port ";
+                if(m_ports[i].m_is_read){
+                    std::cout << "READ";
+                }else{
+                    std::cout << "WRITE";
+                }
+                std::cout << " complete" << std::endl;
                 m_ports[i].m_is_busy = false;
                 m_ports[i].m_op->set_sram_op_complete(m_sram_type); // Read completed
                 m_ports[i].m_op = NULL;
             }
+        }else{
+            all_ports_busy = false;
+        }
+    }
+    
+    if(!all_ports_busy && !m_pipe_reg->empty()){ // Check if input port has a read or write pending
+        pipe_op *op = m_pipe_reg->front();
+        if(op->is_read()){
+            read(op);
+        }else{
+            write(op);
         }
     }
 }
@@ -119,8 +145,40 @@ bool sram_array::write(unsigned address, unsigned size){
 
 bool sram_array::write(pipe_op *op){
     
+    // Check line is valid
+    if(!check_addr(op->get_sram_addr(m_sram_type)))
+        return false;
     
-    return false;
+    unsigned index = (op->get_sram_addr(m_sram_type) / (m_bit_width/2) ) % m_n_lines;
+    
+    if(!m_lines[index].m_valid)
+        return false;
+    
+    // Find first available port to read from
+    for(unsigned i=0; i<m_n_rw_ports; ++i) {
+        if(!m_ports[i].m_is_busy){ // If not already handling another request
+            m_ports[i].m_is_busy = true;
+            m_ports[i].m_is_read = false;
+            m_ports[i].m_cur_access_cycle = 0;
+            
+            m_ports[i].m_op = op;
+            m_ports[i].m_op->set_sram_op_pending(m_sram_type); // Operation not completed yet
+            
+            m_n_writes++;
+            break;
+        }
+    }
+    
+    return true;
+
+}
+
+bool sram_array::is_sram_busy(){
+    for(unsigned i=0; i<m_n_rw_ports; ++i) {
+        if(!m_ports[i].m_is_busy) return false;
+    }
+
+    return true;
 }
 
 

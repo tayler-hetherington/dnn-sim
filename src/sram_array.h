@@ -32,11 +32,12 @@ class sram_array {
     
 public:
     sram_array(sram_type type, unsigned line_size, unsigned num_lines, unsigned bit_width,
-               unsigned num_read_write_ports, unsigned num_cycle_per_access);
+               unsigned num_read_write_ports, unsigned num_cycle_per_access, pipe_reg *p_reg);
     
     ~sram_array();
     
     void cycle();
+    bool is_sram_busy();
     bool read(pipe_op *op);
     bool write(pipe_op *op);
     bool write(unsigned address, unsigned size);
@@ -51,6 +52,8 @@ private:
     ///////////////////
     // Member variables
     ///////////////////
+    pipe_reg *m_pipe_reg; // Stores op for NBin/SB read and NBout write.
+    
     sram_type m_sram_type;
 
     sram_line *m_lines;
