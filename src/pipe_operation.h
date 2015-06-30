@@ -32,4 +32,6 @@ private:
 };
 
 
+typedef std::queue<pipe_op *> pipe_reg;
+
 #endif /* PIPE_OPERATION_H_ */

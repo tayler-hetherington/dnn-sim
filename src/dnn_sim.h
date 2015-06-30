@@ -15,11 +15,12 @@
 class dnn_sim {
 
 public:
-    dnn_sim(unsigned num_stages);
+    dnn_sim(unsigned num_stages, unsigned max_queue_size);
     ~dnn_sim();
 
 private:
 
     pipe_stage **m_pipe_stages;
+    pipe_reg *m_pipe_regs; // Pipeline stages + 2 (one before, one after)
     unsigned m_n_stages;
 };

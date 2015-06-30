@@ -19,7 +19,6 @@
 #include <queue>
 #include <assert.h>
 
-
 enum sram_type {
     NBin = 0,
     NBout = 1,
@@ -36,7 +35,8 @@ typedef struct _sram_op_ {
 enum pipeline_stage {
     NFU1 = 0,
     NFU2 = 1,
-    NFU3 = 2
+    NFU3 = 2,
+    NUM_PIPE_STAGES = 3
 };
 
 #endif

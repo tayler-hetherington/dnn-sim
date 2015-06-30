@@ -13,7 +13,7 @@
 
 
 
-pipe_stage::pipe_stage(std::queue<pipe_op *> *i_op, std::queue<pipe_op *> *o_op, unsigned queue_size){
+pipe_stage::pipe_stage(pipe_reg *i_op, pipe_reg *o_op, unsigned queue_size){
 
     input_op = i_op;
     output_op = o_op;
@@ -44,25 +44,43 @@ pipe_op *pipe_stage::pop_op(){
     return op;
 }
 
-
-nfu_1::nfu_1(std::queue<pipe_op *> *i_op, std::queue<pipe_op *> *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
+//////////////////
+// NFU-1 Stage
+//////////////////
+nfu_1::nfu_1(pipe_reg *i_op, pipe_reg *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
 
 }
+
 nfu_1::~nfu_1(){
 
 }
 
+void nfu_1::cycle(){
 
-nfu_2::nfu_2(std::queue<pipe_op *> *i_op, std::queue<pipe_op *> *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
+}
+
+//////////////////
+// NFU-2 Stage
+//////////////////
+nfu_2::nfu_2(pipe_reg *i_op, pipe_reg *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
 
 }
 nfu_2::~nfu_2(){
 
 }
+void nfu_2::cycle(){
 
-nfu_3::nfu_3(std::queue<pipe_op *> *i_op, std::queue<pipe_op *> *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
+}
+
+//////////////////
+// NFU-3 Stage
+//////////////////
+nfu_3::nfu_3(pipe_reg *i_op, pipe_reg *o_op, unsigned queue_size) : pipe_stage(i_op, o_op, queue_size){
 
 }
 nfu_3::~nfu_3(){
+
+}
+void nfu_3::cycle(){
 
 }
