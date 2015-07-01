@@ -14,7 +14,7 @@
 // Main DNN_sim object. Creates all internal structures of the DianNao architecture
 dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     // Currently hardcoded for 3 stages (NFU-1, NFU-2, NFU-3)
-    m_n_stages = 3;
+    m_n_stages = NUM_PIPE_STAGES;
     assert(m_n_stages == 3);
 
     m_max_buffer_size = m_config->max_buffer_size;
@@ -24,9 +24,9 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     // Create pipeline stage registers ( (num_stages-1) + 2)
     m_pipe_regs = new pipe_reg[m_n_stages + 1];
     
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size);
-    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size);
-    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size);
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages);
+    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages);
+    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages);
     
     // FIXME: Will need to fix this when not multiples of 8-bits
     unsigned bytes = (m_config->bit_width / 8);
@@ -83,12 +83,15 @@ void dnn_sim::cycle(){
     m_sim_cycle++;
     std::cout << "Cycle: " << m_sim_cycle << std::endl;
     
-    check_nb_out_complete();
-    m_srams[NBout]->cycle();
-    for(int i=(NUM_PIPE_STAGES-1); i>=0; --i){
+    check_nb_out_complete();                    // Retire completed pipeline operation
+    
+    m_srams[NBout]->cycle();                    // Cycle NBout SRAM for write
+    
+    for(int i=(NUM_PIPE_STAGES-1); i>=0; --i){  // Cycle the NFU-# pipeline stages in reverse order
         m_pipe_stages[i]->cycle();
     }
-    m_srams[NBin]->cycle();
+    
+    m_srams[NBin]->cycle();                     // Cycle NBin and SB SRAMs for read
     m_srams[SB]->cycle();
 }
 

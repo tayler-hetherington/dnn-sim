@@ -14,6 +14,10 @@ void reg_options(option_parser_t opp);
 static int sg_argc = 3;
 static const char *sg_argv[] = {"", "-config", "dnn-sim.config"};
 
+
+////////////////////////////////////////////////////////////
+// Main
+////////////////////////////////////////////////////////////
 int main(int argc, char **argv){
     std::cout << "Starting DNN-Sim" << std::endl;
     
@@ -61,10 +65,6 @@ void *main_sim_loop(void *args){
     
     assert(m_dnn_sim);
     
-    for(unsigned i=0; i<2; ++i){
-        m_dnn_sim->cycle();
-    }
-
     pipe_op *op = new pipe_op(0, 32, 0, 512, 0, 32);
     
     m_dnn_sim->insert_op(op);
@@ -73,7 +73,7 @@ void *main_sim_loop(void *args){
     // DEBUG
     //m_dnn_sim->insert_dummy_op(op);
     
-    for(unsigned i=0; i<10; ++i){
+    for(unsigned i=0; i<20; ++i){
         m_dnn_sim->cycle();
     }
     
