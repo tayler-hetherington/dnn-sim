@@ -11,36 +11,53 @@
 
 #include "dnn_sim.h"
 
-
 // Main DNN_sim object. Creates all internal structures of the DianNao architecture
-dnn_sim::dnn_sim(unsigned num_stages, unsigned max_queue_size, unsigned bit_width){
-
-    // Currently hardcoded for 3 stages
-    m_n_stages = num_stages;
+dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
+    // Currently hardcoded for 3 stages (NFU-1, NFU-2, NFU-3)
+    m_n_stages = 3;
     assert(m_n_stages == 3);
 
+    m_max_buffer_size = m_config->max_buffer_size;
+    
     m_pipe_stages = new pipe_stage *[m_n_stages];
-
+    
     // Create pipeline stage registers ( (num_stages-1) + 2)
     m_pipe_regs = new pipe_reg[m_n_stages + 1];
-
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], max_queue_size);
-    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], max_queue_size);
-    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], max_queue_size);
+    
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size);
+    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size);
+    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size);
+    
+    // FIXME: Will need to fix this when not multiples of 8-bits
+    unsigned bytes = (m_config->bit_width / 8);
+    
+    
+   //    sram_array(sram_type type, unsigned line_size, unsigned num_lines, unsigned bit_width,
+   //                 unsigned num_read_write_ports, unsigned num_cycle_per_access, pipe_reg *p_reg);
     
     
     // Create SRAMs (SB, NBin, NBout)
-    m_srams[NBin]   = new sram_array(NBin, 32, 64, bit_width, 1, 1, &m_pipe_regs[0]);
-    m_srams[NBout]  = new sram_array(NBout, 32, 64, bit_width, 1, 1, &m_pipe_regs[3]);
-    m_srams[SB]     = new sram_array(SB, 512, 64, bit_width, 1, 1, &m_pipe_regs[0]);
-
+    m_srams[NBin]   = new sram_array(NBin, m_config->nbin_line_length*bytes,
+                                     m_config->nbin_num_lines, m_config->bit_width,
+                                     m_config->nbin_num_ports, m_config->nbin_access_cycles,
+                                     &m_pipe_regs[0]);
+    
+    m_srams[NBout]  = new sram_array(NBout, m_config->nbout_line_length*bytes,
+                                     m_config->nbout_num_lines, m_config->bit_width,
+                                     m_config->nbout_num_ports, m_config->nbout_access_cycles,
+                                     &m_pipe_regs[3]);
+    
+    m_srams[SB]     = new sram_array(SB, m_config->sb_line_length*bytes,
+                                     m_config->sb_num_lines, m_config->bit_width,
+                                     m_config->sb_num_ports, m_config->sb_access_cycles,
+                                     &m_pipe_regs[0]);
     
     // Stats
     m_sim_cycle = 0;
     m_tot_op_issue = 0;
     m_tot_op_complete = 0;
+    
 }
-
 
 
 dnn_sim::~dnn_sim(){
