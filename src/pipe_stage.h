@@ -26,11 +26,11 @@ public:
     pipe_op *pop_op();
 
     virtual void cycle() = 0;
-
+    virtual void print_internal_pipeline();
+    
 protected:
 
     bool is_pipe_reg_full(pipe_reg *reg);
-    virtual void print_internal_pipeline();
     
     // Input/output queues shared between stages
     pipe_reg *input_op;
@@ -40,8 +40,6 @@ protected:
     
     unsigned n_int_pipeline_stages;
     pipe_op **int_pipeline;
-    
-
 };
 
 

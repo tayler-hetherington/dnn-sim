@@ -57,8 +57,11 @@ bool pipe_stage::is_pipe_reg_full(pipe_reg *reg){
 }
 
 void pipe_stage::print_internal_pipeline(){
+    pipe_op *op = NULL;
+    if(!input_op->empty())
+        op = input_op->front();
     
-    std::cout << " | ";
+    std::cout << " | " << op << " | ";
     for(unsigned i=0; i<n_int_pipeline_stages; ++i){
         std::cout << int_pipeline[i] << " | ";
     }
@@ -82,8 +85,7 @@ nfu_1::~nfu_1(){
 void nfu_1::cycle(){
     pipe_op *op;
     // std::cout << "NFU_1: cycle" << std::endl;
-    
-    print_internal_pipeline();
+
     if(!is_pipe_reg_full(output_op)){ // If there's space to push the operation to the next pipeline stage
         
         // Push first operation to next pipeline stage, if any
@@ -108,6 +110,7 @@ void nfu_1::cycle(){
             }
         }
     }
+    
 }
 
 void nfu_1::print_internal_pipeline(){
@@ -129,8 +132,6 @@ void nfu_2::cycle(){
     
     pipe_op *op;
     // std::cout << "NFU_1: cycle" << std::endl;
-    
-    print_internal_pipeline();
     if(!is_pipe_reg_full(output_op)){ // If there's space to push the operation to the next pipeline stage
         
         // Push first operation to next pipeline stage, if any
@@ -151,6 +152,7 @@ void nfu_2::cycle(){
             int_pipeline[0] = op;
         }
     }
+    
 }
 
 void nfu_2::print_internal_pipeline(){
@@ -172,8 +174,6 @@ nfu_3::~nfu_3(){
 void nfu_3::cycle(){
     pipe_op *op;
     // std::cout << "NFU_3: cycle" << std::endl;
-    
-    print_internal_pipeline();
     if(!is_pipe_reg_full(output_op)){ // If there's space to push the operation to the next pipeline stage
         
         // Push first operation to next pipeline stage, if any

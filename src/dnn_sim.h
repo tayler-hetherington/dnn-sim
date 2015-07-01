@@ -26,6 +26,8 @@ public:
     bool insert_op(pipe_op *op);
     void print_stats();
     
+    void print_pipeline();
+    
     // DEBUG
     void insert_dummy_op(pipe_op *op);
     

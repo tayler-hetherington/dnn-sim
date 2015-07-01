@@ -91,6 +91,7 @@ void sram_array::cycle() {
 // Reads a line from the SRAM array
 bool sram_array::read(pipe_op* op){
 
+    std::cout << "Read sent" << std::endl;
     // Check line is valid
     if(!check_addr(op->get_sram_addr(m_sram_type)))
         return false;
@@ -120,7 +121,7 @@ bool sram_array::read(pipe_op* op){
 
 // Reads to a line in the SRAM array
 bool sram_array::write(unsigned address, unsigned size){
-    
+    std::cout << "Write sent" << std::endl;
     // Check line is valid
     if(!check_addr(address))
         return false;
@@ -143,7 +144,7 @@ bool sram_array::write(unsigned address, unsigned size){
 }
 
 bool sram_array::write(pipe_op *op){
-    
+    std::cout << "Write sent" << std::endl;    
     // Check line is valid
     if(!check_addr(op->get_sram_addr(m_sram_type)))
         return false;

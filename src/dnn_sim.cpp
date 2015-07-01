@@ -24,9 +24,9 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     // Create pipeline stage registers ( (num_stages-1) + 2)
     m_pipe_regs = new pipe_reg[m_n_stages + 1];
     
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages);
-    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages);
-    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages);
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1);
+    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1);
+    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1);
     
     // FIXME: Will need to fix this when not multiples of 8-bits
     unsigned bytes = (m_config->bit_width / 8);
@@ -81,7 +81,7 @@ dnn_sim::~dnn_sim(){
 void dnn_sim::cycle(){
     
     m_sim_cycle++;
-    std::cout << "Cycle: " << m_sim_cycle << std::endl;
+    std::cout << std::endl << "Cycle: " << m_sim_cycle << std::endl;
     
     check_nb_out_complete();                    // Retire completed pipeline operation
     
@@ -93,6 +93,8 @@ void dnn_sim::cycle(){
     
     m_srams[NBin]->cycle();                     // Cycle NBin and SB SRAMs for read
     m_srams[SB]->cycle();
+    
+    print_pipeline();
 }
 
 bool dnn_sim::insert_op(pipe_op *op){
@@ -120,13 +122,17 @@ bool dnn_sim::check_nb_out_complete(){
     return true;
 }
 
-
 void dnn_sim::print_stats(){
     std::cout << std::endl << "=====================" << std::endl;
     std::cout << "Total sim cycles: " << m_sim_cycle << std::endl;
     std::cout << "Total operations issued: " << m_tot_op_issue << std::endl;
     std::cout << "Total operations completed: " << m_tot_op_complete << std::endl;
     std::cout << "=====================" << std::endl << std::endl;
+}
+
+void dnn_sim::print_pipeline(){
+    for(unsigned i=0; i<NUM_PIPE_STAGES; ++i)
+        m_pipe_stages[i]->print_internal_pipeline();
 }
 
 ///////////////////////////////////////////////

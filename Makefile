@@ -22,7 +22,6 @@ endif
 all: dir $(TARGET)
 
 dir:
-	@rm -rf $(OBJ)
 	@mkdir -p $(OBJ)
 
 $(OBJ)/%.o: $(SRC)/%.cpp
