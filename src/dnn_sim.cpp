@@ -64,6 +64,7 @@ dnn_sim::~dnn_sim(){
 void dnn_sim::cycle(){
     
     m_sim_cycle++;
+    std::cout << "Cycle: " << m_sim_cycle << std::endl;
     
     check_nb_out_complete();
     m_srams[NBout]->cycle();
@@ -101,11 +102,11 @@ bool dnn_sim::check_nb_out_complete(){
 
 
 void dnn_sim::print_stats(){
-    std::cout << "=====================" << std::endl;
+    std::cout << std::endl << "=====================" << std::endl;
     std::cout << "Total sim cycles: " << m_sim_cycle << std::endl;
     std::cout << "Total operations issued: " << m_tot_op_issue << std::endl;
     std::cout << "Total operations completed: " << m_tot_op_complete << std::endl;
-    std::cout << "=====================" << std::endl;
+    std::cout << "=====================" << std::endl << std::endl;
 }
 
 ///////////////////////////////////////////////

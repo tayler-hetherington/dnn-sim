@@ -56,8 +56,7 @@ sram_array::~sram_array() {
 
 void sram_array::cycle() {
     bool all_ports_busy = true;
-    
-    std::cout << "SRAM cycle (" << m_sram_type << ")" << std::endl;
+
     for(unsigned i=0; i<m_n_rw_ports; ++i){
         if(m_ports[i].m_is_busy){
             std::cout << "SRAM port " << i << " is busy, increment access" << std::endl;
