@@ -116,6 +116,7 @@ bool dnn_sim::check_nb_out_complete(){
         op = m_pipe_regs[m_n_stages].front();
         if(!op->is_read() && op->is_write_complete()){
             m_pipe_regs[m_n_stages].pop();
+            delete op;
             m_tot_op_complete++;
         }
     }

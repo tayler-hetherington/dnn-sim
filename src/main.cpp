@@ -64,14 +64,16 @@ void *main_sim_loop(void *args){
     std::cout << "In main simulation loop" << std::endl;
     
     assert(m_dnn_sim);
+
     
-    pipe_op *op = new pipe_op(0, 32, 0, 512, 0, 32);
+    // DEBUG: Testing inserting 4 ops
     
-    m_dnn_sim->insert_op(op);
-    
-    
-    // DEBUG
-    //m_dnn_sim->insert_dummy_op(op);
+    pipe_op *op[4];
+    for(unsigned i=0; i<4; ++i){
+        op[i] = new pipe_op(0, 32, 0, 512, 0, 32);
+        m_dnn_sim->insert_op(op[i]);
+        m_dnn_sim->cycle();
+    }
     
     for(unsigned i=0; i<20; ++i){
         m_dnn_sim->cycle();
