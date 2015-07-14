@@ -1,8 +1,8 @@
 
 CC=gcc
 CPP=g++
-CFLAGS=
-LDFLAGS=
+CFLAGS= 
+LDFLAGS=-lpthread
 DEBUG?=0
 
 TARGET=dnn-sim
@@ -28,7 +28,7 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	$(CPP) $(CFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJ_FILES)
-	$(CPP) $(LDFLAGS) -o $@ $^
+	$(CPP) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -rf $(TARGET) $(OBJ) *~

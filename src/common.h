@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
+#include <math.h>
 
 enum sram_type {
     NBin = 0,
