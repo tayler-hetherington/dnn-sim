@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <math.h>
 
+
 enum sram_type {
     NBin = 0,
     NBout = 1,
@@ -40,6 +41,14 @@ enum pipeline_stage {
     NFU2 = 1,
     NFU3 = 2,
     NUM_PIPE_STAGES = 3
+};
+
+
+typedef unsigned long mem_addr;
+
+enum mem_access_type {
+    READ = 0,
+    WRITE = 1
 };
 
 #endif

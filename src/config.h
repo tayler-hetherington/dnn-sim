@@ -50,6 +50,7 @@ public:
     unsigned num_nfu3_pipeline_stages;
     unsigned num_nfu3_multipliers;
     unsigned num_nfu3_adders;
+    
 };
 
 #endif
