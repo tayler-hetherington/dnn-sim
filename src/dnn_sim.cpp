@@ -24,9 +24,9 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     // Create pipeline stage registers ( (num_stages-1) + 2)
     m_pipe_regs = new pipe_reg[m_n_stages + 1];
     
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1);
-    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1);
-    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1);
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1, m_config->num_nfu1_multipliers);
+    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1, m_config->num_nfu2_adders, m_config->num_nfu2_shifters, m_config->num_nfu2_max);
+    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1, m_config->num_nfu3_multipliers, m_config->num_nfu3_adders);
     
     // FIXME: Will need to fix this when not multiples of 8-bits
     unsigned bytes = (m_config->bit_width / 8);

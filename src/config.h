@@ -38,12 +38,18 @@ public:
     
     // NFU-1
     unsigned num_nfu1_pipeline_stages;
+    unsigned num_nfu1_multipliers;
 
     // NFU-2
     unsigned num_nfu2_pipeline_stages;
+    unsigned num_nfu2_adders;
+    unsigned num_nfu2_shifters;
+    unsigned num_nfu2_max;
     
     // NFU-3    
     unsigned num_nfu3_pipeline_stages;
+    unsigned num_nfu3_multipliers;
+    unsigned num_nfu3_adders;
 };
 
 #endif

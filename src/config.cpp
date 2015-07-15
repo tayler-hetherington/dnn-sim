@@ -70,13 +70,31 @@ void dnn_config::reg_options(option_parser_t opp){
     option_parser_register(opp, "-num_nfu1_pipeline_stages", OPT_INT32, &num_nfu1_pipeline_stages,
                            "Number of NFU-1 internal pipeline stages (default = 1)",
                            "1");
+    option_parser_register(opp, "-num_nfu1_multipliers", OPT_INT32, &num_nfu1_multipliers,
+                           "Number of NFU-1 multipliers (default = 256)",
+                           "256");
     // NFU-2
     option_parser_register(opp, "-num_nfu2_pipeline_stages", OPT_INT32, &num_nfu2_pipeline_stages,
                            "Number of NFU-2 internal pipeline stages (default = 1)",
+                           "1");
+    option_parser_register(opp, "-num_nfu2_adders", OPT_INT32, &num_nfu2_adders,
+                           "Number of NFU-2 adders (default = 16 * 15)",
+                           "240");
+    option_parser_register(opp, "-num_nfu2_shifters", OPT_INT32, &num_nfu2_shifters,
+                           "Number of NFU-2 shifters (default = 1)",
+                           "1");
+    option_parser_register(opp, "-num_nfu2_max", OPT_INT32, &num_nfu2_max,
+                           "Number of NFU-2 max (default = 1)",
                            "1");
     // NFU-3
     option_parser_register(opp, "-num_nfu3_pipeline_stages", OPT_INT32, &num_nfu3_pipeline_stages,
                            "Number of NFU-3 internal pipeline stages (default = 1)",
                            "1");
+    option_parser_register(opp, "-num_nfu3_multipliers", OPT_INT32, &num_nfu3_multipliers,
+                           "Number of NFU-3 multipliers (default = 16)",
+                           "16");
+    option_parser_register(opp, "-num_nfu3_adders", OPT_INT32, &num_nfu3_adders,
+                           "Number of NFU-3 adders (default = 16)",
+                           "16");
     
 }
