@@ -23,11 +23,6 @@ int main(int argc, char **argv){
     
     pthread_t m_sim_thread;
     
-    unsigned n_pipeline_stages = 3;
-    unsigned max_pipe_queue_length = 8;
-    unsigned bit_width = 16;
-    
-    
     // Create new configuration options
     m_dnn_config = new dnn_config();
     

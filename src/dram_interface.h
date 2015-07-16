@@ -16,21 +16,7 @@
 #include "common.h"
 #include "pipe_operation.h"
 
-/*
- *   A memory request object to fill SRAMs from DRAM
-*/
-class memory_fetch {
-public:
-    mem_addr addr;          // Address to access
-    unsigned size;          // Bytes
-    mem_access_type type;   // Read or write
-    unsigned long long access_complete_cycle; // Fixed-latency memory request completion cycle
-    pipe_op *op;            // Pointer to the pipe operation that generated this request
-    
-    bool is_complete;       // If the operation has compeleted. Used to writeback to SRAM on a read
-};
-
-
+#include "mem_fetch.h"
 
 /*
  *   DRAM interface
@@ -39,6 +25,7 @@ class dram_interface {
   
 public:
     
+    // FIXME: Access latency is currently independent of the request size.
     dram_interface(unsigned access_latency, unsigned max_pending_req);
     ~dram_interface();
     

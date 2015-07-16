@@ -123,6 +123,13 @@ bool dnn_sim::check_nb_out_complete(){
     return true;
 }
 
+bool dnn_sim::read_sram(unsigned address, unsigned size, sram_type s_type){
+    return m_srams[s_type]->read(address, size);
+}
+bool dnn_sim::write_sram(unsigned address, unsigned size, sram_type s_type){
+    return m_srams[s_type]->write(address, size);
+}
+
 void dnn_sim::print_stats(){
     std::cout << std::endl << "=====================" << std::endl;
     std::cout << "Total sim cycles: " << m_sim_cycle << std::endl;

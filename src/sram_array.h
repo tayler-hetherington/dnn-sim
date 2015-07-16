@@ -40,6 +40,8 @@ public:
     bool is_sram_busy();
     bool read(pipe_op *op);
     bool write(pipe_op *op);
+    
+    bool read(unsigned address, unsigned size);
     bool write(unsigned address, unsigned size);
     
 private:

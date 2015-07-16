@@ -3,29 +3,31 @@
 ////////////////////////////////////////////////////////
 // Tayler Hetherington
 // 2015
-// cp_inst.h
-// Control Processor Instruction
+// control_processor.h
+// Control Processor
 ////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////
 
-#ifndef __CP_INST_H__
-#define __CP_INST_H__
+#ifndef __CONTROL_PROCESSOR_H__
+#define __CONTROL_PROCESSOR_H__
 
 #include "common.h"
 
+#include "dnn_sim.h"
+#include "dram_interface.h"
+#include "config.h"
+#include "option_parser.h"
 
-enum READ_OP {
+
+enum MEMORY_OP {
     NOP = 0,
-    LOAD = 1,
-    READ = 2
+    MEM_LOAD = 1,
+    MEM_READ = 2,
+    MEM_STORE = 3,
+    MEM_WRITE = 4
 };
 
-enum WRITE_OP {
-    NOP = 0,
-    STORE = 1,
-    WRITE = 2
-};
 
 enum NFU_OP {
     MULT = 0,
@@ -33,17 +35,28 @@ enum NFU_OP {
     SIGMOID = 2
 };
 
+// TODO: Add to the state when necessary
+enum CP_INST_STATE {
+    LOAD_NBIN = 0,
+    LOAD_SB,
+    DO_OP,
+    STORE_NBOUT
+};
+
 // Control processor instruction format taken from Table 4 of DianNao paper
 class cp_inst {
+public:
+    CP_INST_STATE   m_state;
+    
     
     // SB
-    READ_OP     sb_read_op;
+    MEMORY_OP   sb_read_op;
     bool        sb_reuse;
     mem_addr    sb_addr;
     unsigned    sb_size;
     
     // NBin
-    READ_OP     nbin_read_op;
+    MEMORY_OP   nbin_read_op;
     bool        nbin_resuse;
     unsigned    nbin_stride;
     unsigned    nbin_stride_begin;
@@ -52,8 +65,8 @@ class cp_inst {
     unsigned    nbin_size;
     
     // NBout
-    READ_OP     nbout_read_op;
-    WRITE_OP    nbout_write_op;
+    MEMORY_OP   nbout_read_op;
+    MEMORY_OP   nbout_write_op;
     mem_addr    nbout_addr;
     unsigned    nbout_size;
     
@@ -61,13 +74,39 @@ class cp_inst {
     NFU_OP      nfu1_op;
     NFU_OP      nfu2_op;
 
-    // NFU-2 IN == RESET/NBOUT
-    // NFU-2 OUT == NBOUT/NFU3
+    // NFU-2 IN = RESET/NBOUT
+    // NFU-2 OUT = NBOUT/NFU3
     
     NFU_OP      nfu3_op;
     unsigned    output_begin;
     unsigned    output_end;
     
 };
+
+
+class control_processor {
+    
+public:
+    control_processor();
+    ~control_processor();
+
+    void cycle();
+    
+    void test();
+    
+private:
+    
+    void do_cp_inst(cp_inst *inst);
+    
+    dnn_sim *m_dnn_sim;
+    dnn_config *m_dnn_config;
+    dram_interface *m_dram_interface;
+    
+    std::queue<memory_fetch *> m_mem_requests;
+    
+    
+    
+};
+
 
 #endif

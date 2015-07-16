@@ -31,6 +31,9 @@ public:
     // DEBUG
     void insert_dummy_op(pipe_op *op);
     
+    bool read_sram(unsigned address, unsigned size, sram_type s_type);
+    bool write_sram(unsigned address, unsigned size, sram_type s_type);
+    
 private:
 
     // Configs

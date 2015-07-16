@@ -9,6 +9,7 @@
 #define __PIPE_OPERATION_H__
 
 #include "common.h"
+#include "mem_fetch.h"
 
 class pipe_op {
 
