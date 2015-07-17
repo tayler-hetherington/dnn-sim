@@ -71,34 +71,34 @@ void control_processor::do_cp_inst(cp_inst *inst){
     
     switch(inst->m_state){
         // Always start with LOAD_NBIN if both LOAD_NBIN and LOAD_SB are set
-        case LOAD_NBIN: // Load from DRAM into the NBin SRAM
+      case cp_inst::LOAD_NBIN: // Load from DRAM into the NBin SRAM
             
-            mf = new memory_fetch(inst->nbin_addr, inst->nbin_size, READ, NBin);
+            mf = new memory_fetch(inst->nbin_address, inst->nbin_size, READ, NBin);
             m_dram_interface->do_access(mf);
             
-            if(inst->sb_read_op == MEM_LOAD){
-                inst->m_state = LOAD_SB;
+            if(inst->sb_read_op == cp_inst::LOAD){
+                inst->m_state = cp_inst::LOAD_SB;
             }else{
-                inst->m_state = DO_OP;
+                inst->m_state = cp_inst::DO_OP;
             }
             
             m_mem_requests.push(mf); // Add memory fetch to pending queue
             
             break;
             
-        case LOAD_SB: // Load from DRAM into the SB SRAM
+        case cp_inst::LOAD_SB: // Load from DRAM into the SB SRAM
             
-            mf = new memory_fetch(inst->sb_addr, inst->sb_size, READ, SB);
+            mf = new memory_fetch(inst->sb_address, inst->sb_size, READ, SB);
             m_dram_interface->do_access(mf);
             
-            inst->m_state = DO_OP;
+            inst->m_state = cp_inst::DO_OP;
             
             m_mem_requests.push(mf); // Add memory fetch to pending queue
             
             
             break;
             
-        case DO_OP: // All data is loaded into the SRAMs, push pipe_ops into the main dnn_sim pipeline
+        case cp_inst::DO_OP: // All data is loaded into the SRAMs, push pipe_ops into the main dnn_sim pipeline
             
             // First wait for all loads to complete, write data to SRAMs
             if(m_mem_requests.size() > 0){
@@ -127,7 +127,7 @@ void control_processor::do_cp_inst(cp_inst *inst){
             
             break;
             
-        case STORE_NBOUT:
+        case cp_inst::STORE_NBOUT:
             // Write out NBout to DRAM
             std::cout << "Test" << std::endl;
             break;
@@ -146,23 +146,23 @@ void control_processor::test(){
     
     
     // Set test data
-    m_inst->sb_read_op = MEM_LOAD;
+    m_inst->sb_read_op = cp_inst::LOAD;
     m_inst->sb_reuse = 0;
-    m_inst->sb_addr = 0;
+    m_inst->sb_address = 0;
     m_inst->sb_size = 32768;
     
 
-    m_inst->nbin_read_op = MEM_LOAD;
-    m_inst->nbin_resuse = 0;
+    m_inst->nbin_read_op = cp_inst::LOAD;
+    m_inst->nbin_reuse = 0;
     m_inst->nbin_stride = 0;
     m_inst->nbin_stride_begin = 0;
     m_inst->nbin_stride_end = 0;
-    m_inst->nbin_addr = 4194304;
+    m_inst->nbin_address = 4194304;
     m_inst->nbin_size = 2048;
     
     // TODO: Add main NFU stages and NBout config
     
-    m_inst->m_state = LOAD_NBIN;
+    m_inst->m_state = cp_inst::LOAD_NBIN;
     
     // Cycle through the state machine for this test instruction
     while(!is_test_complete){

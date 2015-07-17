@@ -9,6 +9,9 @@
 ////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////
 
+#ifndef __DNN_SIM__
+#define __DNN_SIM__
+
 #include "common.h"
 #include "pipe_stage.h"
 #include "sram_array.h"
@@ -57,3 +60,5 @@ private:
     unsigned long long m_tot_op_complete;
     
 };
+
+#endif // __DNN_SIM__
