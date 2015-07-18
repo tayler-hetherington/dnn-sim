@@ -14,52 +14,20 @@
 // Testing
 static bool is_test_complete = false;
 
-// Borrowed from GPGPU-Sim (www.gpgpu-sim.org) 2015
-static int sg_argc = 3;
-static const char *sg_argv[] = {"", "-config", "dnn-sim.config"};
 
-control_processor::control_processor(){
+control_processor::control_processor(dnn_config const * const cfg){
     
-    // Create new configuration options
-    m_dnn_config = new dnn_config();
-    
-    // Parse configuration file (borrowed from GPGPU-Sim 2015 (www.gpgpu-sim.org)
-    option_parser_t opp = option_parser_create();
-    m_dnn_config->reg_options(opp);
-    option_parser_cmdline(opp, sg_argc, sg_argv);
-    option_parser_print(opp, stdout);
-    std::cout << std::endl;
-    std::cout << std::endl;
-    
-    // Create main DNN-Sim object
-    m_dnn_sim = new dnn_sim(m_dnn_config);
-    
-    // Create main DRAM interface
-    // FIXME: Fix these values
-    m_dram_interface = new dram_interface(400, 32);
+    m_dnn_config = cfg;
     
 }
 
 control_processor::~control_processor(){
     
-    if(m_dnn_config)
-        delete m_dnn_config;
-    
-    if(m_dnn_sim)
-        delete m_dnn_sim;
-    
 }
 
 void control_processor::cycle(){
-    
-    // Cycle the DRAM
-    m_dram_interface->cycle();
-    
-    // Cycle the main pipeline
-    m_dnn_sim->cycle();
+
 }
-
-
 
 // FIXME: Note - DRAM memory_fetch currently pulls in the complete data in one request to fill the entire SRAMs.
 //        This needs to be separated out into multiple accesses and multiple writes to the SRAMs.
@@ -106,7 +74,7 @@ void control_processor::do_cp_inst(cp_inst *inst){
                 
                 if(mf->m_is_complete){
                     // Write the data to the SRAM
-                    if(m_dnn_sim->write_sram(mf->m_addr, mf->m_size, mf->m_sram_type)){
+                    if(m_datapath->write_sram(mf->m_addr, mf->m_size, mf->m_sram_type)){
                         // Write went through, pop the request from the mem_req queue
                         m_mem_requests.pop();
                     }else {
@@ -129,7 +97,7 @@ void control_processor::do_cp_inst(cp_inst *inst){
             
         case cp_inst::STORE_NBOUT:
             // Write out NBout to DRAM
-            std::cout << "Test" << std::endl;
+            std::cout << "STORE_NBOUT not implemented" << std::endl;
             break;
             
         default:

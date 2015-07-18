@@ -1,0 +1,19 @@
+Right now the simulator hierarchy looks like:
+
+dnn_sim
+  dram_interface
+  control_processor
+  datapath
+    buffers
+    NFU pipeline
+
+the control processor has pointers to datapath and dram_interface which it can use to micromanage them (everything is public)
+  we can convert this to a proper interface later
+
+start with datapath, assume input buffers are full, ignore memory
+
+TODO:
+  centralize stat collection?
+  simple memory model
+  DRAMsim?
+  create proper interface for datapath

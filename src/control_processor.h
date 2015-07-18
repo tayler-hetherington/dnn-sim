@@ -14,17 +14,16 @@
 
 #include "common.h"
 
-#include "dnn_sim.h"
-#include "dram_interface.h"
 #include "config.h"
-#include "option_parser.h"
 #include "cp_inst.h"
-
+#include "mem_fetch.h"
+#include "dram_interface.h"
+#include "datapath.h"
 
 class control_processor {
     
 public:
-    control_processor();
+    control_processor(dnn_config const * const cfg);
     ~control_processor();
 
     void cycle();
@@ -35,10 +34,11 @@ private:
     
     void do_cp_inst(cp_inst *inst);
     
-    dnn_sim *m_dnn_sim;
-    dnn_config *m_dnn_config;
-    dram_interface *m_dram_interface;
+    dnn_config const * m_dnn_config;
     
+    dram_interface *m_dram_interface;
+    datapath *m_datapath;
+
     std::queue<memory_fetch *> m_mem_requests;
 };
 
