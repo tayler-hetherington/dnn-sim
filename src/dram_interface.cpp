@@ -30,19 +30,21 @@ void dram_interface::cycle(){
     memory_fetch *mf = NULL;
     m_cur_dram_cycle++;
     
-    mf = m_mem_queue.front();
-    if(m_cur_dram_cycle >= mf->m_access_complete_cycle){ // Memory request has compeleted
+    if(!m_mem_queue.empty()) {
+      mf = m_mem_queue.front();
+      if(m_cur_dram_cycle >= mf->m_access_complete_cycle){ // Memory request has compeleted
         
-        // Increment stats
-        if(mf->m_type == READ) m_num_reads++;
-        else m_num_writes++;
-                
-        // Set completed
-        mf->m_is_complete = true;
+          // Increment stats
+          if(mf->m_type == READ) m_num_reads++;
+          else m_num_writes++;
+                 
+          // Set completed
+          mf->m_is_complete = true;
         
-        // Pop from queue
-        m_mem_queue.pop_front();
-    }
+          // Pop from queue
+          m_mem_queue.pop_front();
+      }
+  }
     
 }
 
