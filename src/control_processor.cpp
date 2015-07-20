@@ -29,10 +29,12 @@ control_processor::~control_processor(){
 
 void control_processor::cycle(){
 
-  cp_inst * inst = &m_inst_queue.front();
-  bool done = do_cp_inst(inst);
-  if (done) {
-    m_inst_queue.pop();
+  if(!m_inst_queue.empty()) {
+    cp_inst * inst = &m_inst_queue.front();
+    bool done = do_cp_inst(inst);
+    if (done) {
+      m_inst_queue.pop();
+    }
   }
 
 }
@@ -49,7 +51,8 @@ bool control_processor::do_cp_inst(cp_inst *inst){
     memory_fetch *mf = NULL;
     bool pending_req = false;
     bool done = false;
-    
+
+std::cout << "control_processor::do_cp_inst" << std::endl;    
     switch(inst->m_state){
         // Always start with LOAD_NBIN if both LOAD_NBIN and LOAD_SB are set
       case cp_inst::LOAD_NBIN: // Load from DRAM into the NBin SRAM

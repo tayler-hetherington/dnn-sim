@@ -124,7 +124,7 @@ bool sram_array::read(pipe_op* op){
 // Reads a line from the SRAM array
 bool sram_array::read(unsigned address, unsigned size){
     
-    std::cout << "Write sent" << std::endl;
+    std::cout << "Read sent" << std::endl;
     // Check line is valid
     if(!check_addr(address))
         return false;
@@ -148,7 +148,7 @@ bool sram_array::read(unsigned address, unsigned size){
             break;
         }
     }
-    
+     
     return true;
 }
 

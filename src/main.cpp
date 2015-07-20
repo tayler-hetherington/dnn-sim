@@ -65,7 +65,7 @@ void *main_sim_loop(void *args){
     
     pipe_op *op[4];
     for(unsigned i=0; i<4; ++i){
-        op[i] = new pipe_op(0, 32, 0, 512, 0, 32);
+        op[i] = new pipe_op(0, 32, 0, 256, 0, 32);
         m_dnn_sim->insert_op(op[i]);
         m_dnn_sim->cycle();
     }

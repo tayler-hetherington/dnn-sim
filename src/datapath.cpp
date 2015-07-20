@@ -92,7 +92,7 @@ void datapath::cycle(){
     m_srams[NBin]->cycle();                     // Cycle NBin and SB SRAMs for read
     m_srams[SB]->cycle();
     
-    print_pipeline();
+    //print_pipeline();
 }
 
 bool datapath::insert_op(pipe_op *op){
@@ -146,10 +146,5 @@ void datapath::print_pipeline(){
 void datapath::insert_dummy_op(pipe_op *op){
     m_pipe_stages[NFU1]->push_op(op);
 }
-
-
-
-
-
 
 
