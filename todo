@@ -10,6 +10,15 @@ dnn_sim
 the control processor has pointers to datapath and dram_interface which it can use to micromanage them (everything is public)
   we can convert this to a proper interface later
 
+the control processor will also take care of the DMA actions
+the control processor issues pipe_ops to the datapath when their data has been loaded to memory
+once all pipe_ops have been issued (queued) then start the next instruction (keep trying to load SB until there is space)
+
+what about NBout?
+    
+
+    
+
 start with datapath, assume input buffers are full, ignore memory
 
 TODO:

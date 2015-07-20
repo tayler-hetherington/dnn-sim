@@ -29,7 +29,6 @@ pipe_op::pipe_op(unsigned nb_in_addr, unsigned nb_in_size,
 
 pipe_op::~pipe_op(){
 
-
 }
 
 bool pipe_op::is_read(){

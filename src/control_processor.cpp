@@ -15,9 +15,11 @@
 static bool is_test_complete = false;
 
 
-control_processor::control_processor(dnn_config const * const cfg){
+control_processor::control_processor(dnn_config const * const cfg, datapath * dp, dram_interface * dram) {
     
     m_dnn_config = cfg;
+    m_datapath = dp;
+    m_dram_interface = dram;
     
 }
 
@@ -27,15 +29,26 @@ control_processor::~control_processor(){
 
 void control_processor::cycle(){
 
+  cp_inst * inst = &m_inst_queue.front();
+  bool done = do_cp_inst(inst);
+  if (done) {
+    m_inst_queue.pop();
+  }
+
 }
 
 // FIXME: Note - DRAM memory_fetch currently pulls in the complete data in one request to fill the entire SRAMs.
 //        This needs to be separated out into multiple accesses and multiple writes to the SRAMs.
 
-void control_processor::do_cp_inst(cp_inst *inst){
+// processes the current instruction according to its current state and updates the state if applicable
+// input:   inst    pointer to the instruction to process
+//                  note that an instruction takes multiple cycles to execute
+// output:          true if all the pipe_ops have been issued
+bool control_processor::do_cp_inst(cp_inst *inst){
     // FSM for each instruction
     memory_fetch *mf = NULL;
     bool pending_req = false;
+    bool done = false;
     
     switch(inst->m_state){
         // Always start with LOAD_NBIN if both LOAD_NBIN and LOAD_SB are set
@@ -79,7 +92,7 @@ void control_processor::do_cp_inst(cp_inst *inst){
                         m_mem_requests.pop();
                     }else {
                         // Otherwise, all SRAM ports were busy, try again next cycle
-                        return;
+                        return false;
                     }
                     
                 }else{
@@ -88,10 +101,19 @@ void control_processor::do_cp_inst(cp_inst *inst){
             }
             
             // Then start doing the main operation if no pending DRAM READS
+            // Patrick: Can't we start processing data while the buffers are being filled?
             if(!pending_req){
                 // This is where I would start creating "pipe_ops" to perform the convolution, cycling through the different filters loaded into SB
                 
+                pipe_op * op = new pipe_op( inst->nbin_address, inst->nbin_size,
+                                            inst->sb_address, inst->sb_size,
+                                            inst->nbout_address, inst->nbout_size );
             }
+
+            // how do we know when an instruction is done?
+            // if ( ) {
+            //  done = true;
+            // }
             
             break;
             
@@ -104,7 +126,7 @@ void control_processor::do_cp_inst(cp_inst *inst){
             std::cout << "Error: Undefined instruction state. Aborting" << std::endl;
             abort();
     }
-    
+    return done;
 }
 
 void control_processor::test(){

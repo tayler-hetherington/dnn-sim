@@ -35,7 +35,7 @@ public:
     
 private:
 
-    bool m_is_read;
+    bool m_is_read; // areant all ops reads?
     sram_op m_sram_op[NUM_SRAM_TYPE];
     bool sram_op_complete[NUM_SRAM_TYPE];
 };

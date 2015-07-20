@@ -23,7 +23,7 @@
 class control_processor {
     
 public:
-    control_processor(dnn_config const * const cfg);
+    control_processor(dnn_config const * const cfg, datapath * dp, dram_interface * dram_if);
     ~control_processor();
 
     void cycle();
@@ -32,7 +32,7 @@ public:
     
 private:
     
-    void do_cp_inst(cp_inst *inst);
+    bool do_cp_inst(cp_inst *inst);
     
     dnn_config const * m_dnn_config;
     
@@ -40,6 +40,8 @@ private:
     datapath *m_datapath;
 
     std::queue<memory_fetch *> m_mem_requests;
+
+    std::queue<cp_inst> m_inst_queue;
 };
 
 #endif
