@@ -31,10 +31,9 @@ control_processor::~control_processor(){
 
 void control_processor::cycle(){
 
-    std::cout << "queue size = " << m_inst_queue.size() << std::endl;
     if ( m_inst_queue.empty() ) return;
     cp_inst * inst = &m_inst_queue.front();
-    std::cout << "Executing instruction: " << *inst << std::endl;
+    std::cout << "Current instruction: " << *inst << std::endl;
     bool done = do_cp_inst(inst);
     if (done) {
         std::cout << "Popping Inst Queue\n";
@@ -74,7 +73,7 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                 inst->m_state = cp_inst::DO_OP;
             }
 
-            mf->m_is_complete = true; // HACH for TESTING
+            //mf->m_is_complete = true; // HACH for TESTING
             m_mem_requests.push(mf); // Add memory fetch to pending queue
 
             m_sb_index = 0;
@@ -89,7 +88,7 @@ bool control_processor::do_cp_inst(cp_inst *inst){
 
             inst->m_state = cp_inst::DO_OP;
 
-            mf->m_is_complete = true; // HACK for TESTING
+           // mf->m_is_complete = true; // HACK for TESTING
             m_mem_requests.push(mf); // Add memory fetch to pending queue
 
             break;
@@ -112,6 +111,7 @@ bool control_processor::do_cp_inst(cp_inst *inst){
 
                 }else{
                     pending_req = true;
+                    std::cout << "DO_OP waiting for pending request\n";
                 }
             }
 
@@ -197,7 +197,6 @@ bool control_processor::read_instructions(std::istream & is){
     std::stringstream ss("| NOP || LOAD | 0 | 0 | 32768 || LOAD | 1 | 0 | 0 | 0 | 4194304 | 2048 || NOP | WRITE | 0 | 0 || MULT | ADD | RESET | NBOUT | SIGMOID | 1 | 0 |");
     ss >> ins;
     ins.m_state = cp_inst::LOAD_SB; // inital state
-    std::cout << "queue size before push = " << m_inst_queue.size() << std::endl;
     m_inst_queue.push(ins);
 
     return true;

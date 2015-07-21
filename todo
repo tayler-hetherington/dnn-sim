@@ -21,6 +21,16 @@ what about NBout?
 
 start with datapath, assume input buffers are full, ignore memory
 
+BUGS:
+    pipe_ops not propagating?
+
+    Cycle: 99
+    NFU_1: input non-empty                      // NFU is stalling for data
+    SRAM port 0 is busy, increment access       // WHY
+    SRAM port READ complete                     // sounds good, nothings happening
+    Read sent                                   // to where?
+
+
 TODO:
   centralize stat collection?
   simple memory model

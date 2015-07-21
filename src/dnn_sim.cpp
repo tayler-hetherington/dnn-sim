@@ -18,7 +18,7 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     
     // Create main DRAM interface
     // FIXME: Fix these values
-    m_dram_interface = new dram_interface(400, 32);
+    m_dram_interface = new dram_interface(5, 32);
 
     m_datapath = new datapath(m_config);
 
@@ -44,8 +44,6 @@ void dnn_sim::cycle(){
     m_control_processor->cycle();
     m_dram_interface->cycle();
     m_datapath->cycle();
-    
-    m_datapath->print_pipeline();
 }
 
 // FOR TESTING
