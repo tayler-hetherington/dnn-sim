@@ -97,4 +97,7 @@ void dnn_config::reg_options(option_parser_t opp){
                            "Number of NFU-3 adders (default = 16)",
                            "16");
     
+    option_parser_register(opp, "-num_outputs", OPT_INT32, &num_outputs,
+                           "Number of output feature maps (default = 256)",
+                           "256");
 }

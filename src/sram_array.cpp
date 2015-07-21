@@ -129,6 +129,7 @@ bool sram_array::read(unsigned address, unsigned size){
     if(!check_addr(address))
         return false;
     
+    // assuming that all addresses streams will be sequential
     unsigned index = (address / (m_bit_width/2) ) % m_n_lines;
     
     if(!m_lines[index].m_valid)

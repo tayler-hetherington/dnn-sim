@@ -21,6 +21,7 @@
 class dnn_sim {
 
 public:
+
     dnn_sim(dnn_config *config);
     
     ~dnn_sim();
@@ -28,7 +29,10 @@ public:
     void cycle(); // Top level cycle function.
     
     bool insert_op(pipe_op *op); // Keeping this for testing
+
     void print_stats();
+
+    bool read_instructions();
     
 private:
 

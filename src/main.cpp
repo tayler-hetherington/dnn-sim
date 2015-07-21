@@ -63,14 +63,14 @@ void *main_sim_loop(void *args){
     
     // DEBUG: Testing inserting 4 ops
     
-    pipe_op *op[4];
-    for(unsigned i=0; i<4; ++i){
-        op[i] = new pipe_op(0, 32, 0, 512, 0, 32);
-        m_dnn_sim->insert_op(op[i]);
-        m_dnn_sim->cycle();
-    }
+    //pipe_op *op[4];
+    //for(unsigned i=0; i<4; ++i){
+    //    op[i] = new pipe_op(0, 32, 0, 512, 0, 32);
+    //    m_dnn_sim->insert_op(op[i]);
+    //    m_dnn_sim->cycle();
+    //}
     
-    for(unsigned i=0; i<20; ++i){
+    for(unsigned i=0; i<100; ++i){
         m_dnn_sim->cycle();
     }
     

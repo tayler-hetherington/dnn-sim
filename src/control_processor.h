@@ -12,6 +12,8 @@
 #ifndef __CONTROL_PROCESSOR_H__
 #define __CONTROL_PROCESSOR_H__
 
+#include <iostream>
+
 #include "common.h"
 
 #include "config.h"
@@ -29,7 +31,8 @@ public:
     void cycle();
     
     void test();
-    
+
+    bool read_instructions(std::istream & is);
 private:
     
     bool do_cp_inst(cp_inst *inst);
@@ -42,6 +45,10 @@ private:
     std::queue<memory_fetch *> m_mem_requests;
 
     std::queue<cp_inst> m_inst_queue;
+
+    int m_sb_index;
+    //  used to track progress of instruction in the DO_OP state
+    //  since SB entries are never reused
 };
 
 #endif

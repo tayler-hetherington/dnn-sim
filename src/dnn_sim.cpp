@@ -11,6 +11,8 @@
 
 #include "dnn_sim.h"
 
+#include <fstream>
+
 // Main DNN_sim object. Creates all internal structures of the DianNao architecture
 dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     
@@ -25,6 +27,7 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     // Stats
     m_sim_cycle = 0;
     
+    read_instructions();
 }
 
 dnn_sim::~dnn_sim(){
@@ -38,8 +41,8 @@ void dnn_sim::cycle(){
     std::cout << std::endl << "Cycle: " << m_sim_cycle << std::endl;
     
     // not sure about order here
-    m_dram_interface->cycle();
     m_control_processor->cycle();
+    m_dram_interface->cycle();
     m_datapath->cycle();
     
     m_datapath->print_pipeline();
@@ -56,3 +59,11 @@ void dnn_sim::print_stats(){
     std::cout << "=====================" << std::endl << std::endl;
 }
 
+bool dnn_sim::read_instructions(){
+    std::ifstream ifs;
+    ifs.open ("dummy");
+    if (m_control_processor){
+        return m_control_processor->read_instructions(ifs);
+    }
+    return false;
+}
