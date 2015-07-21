@@ -61,7 +61,7 @@ void pipe_stage::print_internal_pipeline(){
     if(!input_op->empty())
         op = input_op->front();
     
-    std::cout << " | " << op << " | ";
+    std::cout << " | " << op << " || ";
     for(unsigned i=0; i<=n_int_pipeline_stages; ++i){
         std::cout << int_pipeline[i] << " | ";
     }
@@ -96,6 +96,21 @@ m_num_multipliers(num_multipliers){
     
 }
 
+nfu_1::nfu_1(pipe_reg *i_op, pipe_reg *o_op , pipe_reg *requests_reg,
+             unsigned queue_size, unsigned num_int_pipeline_stages,
+             unsigned num_multipliers) :
+pipe_stage(i_op, o_op, queue_size, num_int_pipeline_stages),
+m_num_multipliers(num_multipliers), m_requests(requests_reg){
+    
+    
+    m_multipliers = new functional_unit*[m_num_multipliers];
+    for(unsigned i=0; i<m_num_multipliers; ++i){
+        m_multipliers[i] = new functional_unit();
+    }
+    
+}
+
+
 nfu_1::~nfu_1(){
     if(m_multipliers){
         for(unsigned i=0; i<m_num_multipliers; ++i){
@@ -125,7 +140,6 @@ void nfu_1::cycle(){
         
         // Progress internal stage pipeline
         for(int i=n_int_pipeline_stages; i>0; --i){
-		std::cout << "a:" <<  n_int_pipeline_stages << " " << int_pipeline[i-1] << " ";
             int_pipeline[i] = int_pipeline[i-1];
         }
          std::cout << std::endl;

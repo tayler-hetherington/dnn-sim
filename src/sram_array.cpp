@@ -12,7 +12,7 @@
 #include "sram_array.h"
 
 sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, unsigned bit_width,
-                       unsigned num_read_write_ports, unsigned num_cycle_per_access, pipe_reg *p_reg) {
+                       unsigned num_read_write_ports, unsigned num_cycle_per_access, pipe_reg *p_requests, pipe_reg *p_reg) {
     
     m_sram_type = type;
 
@@ -23,6 +23,7 @@ sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, u
     m_cycles_per_access = num_cycle_per_access;
     
     m_pipe_reg = p_reg;
+    m_requests = p_requests;
     
     m_n_reads = 0;
     m_n_writes = 0;
@@ -59,7 +60,7 @@ void sram_array::cycle() {
 
     for(unsigned i=0; i<m_n_rw_ports; ++i){
         if(m_ports[i].m_is_busy){
-            std::cout << "SRAM port " << i << " is busy, increment access" << std::endl;
+            std::cout << "SRAMtype " <<  m_sram_type << " port " << i << " is busy, increment access" << std::endl;
             m_ports[i].m_cur_access_cycle++;
             if(m_ports[i].m_cur_access_cycle >= m_cycles_per_access) {
                 std::cout << "SRAM port ";
@@ -71,8 +72,18 @@ void sram_array::cycle() {
                 std::cout << " complete" << std::endl;
                 m_ports[i].m_is_busy = false;
                 if(m_ports[i].m_op){
-                    m_ports[i].m_op->set_sram_op_complete(m_sram_type); // Read completed
+		    //the operation is complete, it is pushed in the pipe reg
+		    m_ports[i].m_op->set_sram_op_complete(m_sram_type);
+                    //the first sram array finishing indtroduces it in the pipe_reg queue
+                    if(!m_ports[i].m_op->is_in_pipe_reg()) {
+                      std::cout << m_sram_type << " put the request in the pipe_reg" << std::endl;
+                      m_pipe_reg->push(m_ports[i].m_op);
+                      m_ports[i].m_op->set_in_pipe_reg();
+		      m_requests->pop();
+		    }
                     m_ports[i].m_op = NULL;
+		    //and removed from the requests queue
+                    all_ports_busy = false;
                 }
             }
         }else{
@@ -80,8 +91,8 @@ void sram_array::cycle() {
         }
     }
     
-    if(!all_ports_busy && !m_pipe_reg->empty()){ // Check if input port has a read or write pending
-        pipe_op *op = m_pipe_reg->front();
+    if(!all_ports_busy && !m_requests->empty()){ // Check if input port has a read or write pending
+        pipe_op *op = m_requests->front(); 
         if(op->is_read()){
             read(op);
         }else{

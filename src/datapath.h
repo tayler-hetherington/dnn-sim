@@ -48,6 +48,7 @@ private:
     // Main pipeline stages (NFU-1, NFU-2, NFU-3)
     pipe_stage **m_pipe_stages;
     pipe_reg *m_pipe_regs; // Pipeline stages + 2 (one before, one after)
+    pipe_reg *m_pipe_requests; 
     unsigned m_n_stages;
     
     unsigned m_max_buffer_size;
