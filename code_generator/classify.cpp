@@ -161,6 +161,8 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
     unsigned current_nbin_pointer = nbin_addr;
     unsigned current_nbout_pointer = nbout_addr;
 
+    unsigned num_nbout_to_write = std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
+
     bool is_new_block = true;
 
     do {
@@ -169,6 +171,7 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
 
       unsigned num_input_to_load = std::min(remaining_input_neurons, num_input_neurons_per_entry * num_nbin_entries);
       unsigned num_sb_to_load = num_input_to_load * std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
+      num_nbout_to_write = std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
 
       // initial load
       inst = load_instruction(num_sb_to_load, num_input_to_load, current_sb_pointer, current_nbin_pointer, word_size);
@@ -212,7 +215,7 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
         is_new_block = false;
   
         // stat for instruction
-        cycles     = std::max(num_input_to_load / num_input_neurons_per_entry, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
+        cycles     = std::max(num_nbout_to_write, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
         byte_read  = inst.sb_size + inst.nbin_size;
         byte_write = inst.nbout_size;
         bandwidth  = (byte_read + byte_write) / cycles;
@@ -228,7 +231,6 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
     } while (remaining_input_neurons > 0);
 
     // generate output instruction
-    unsigned num_nbout_to_write = std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
     inst = output_instruction(num_nbout_to_write, current_nbout_pointer, word_size);
 
     // update counters
@@ -270,7 +272,19 @@ int main(int argc, char **argv){
 
  if (argc != 12) {
    std::cout << "Found " << argc-1 << " arguments" << std::endl;
-   std::cout << "Need 11" << std::endl;
+   std::cout << "Order of Arguments:" << std::endl;
+   std::cout << "num_input_neurons" << std::endl;
+   std::cout << "num_output_neurons" << std::endl;
+   std::cout << "num_input_neurons_per_entry" << std::endl;
+   std::cout << "num_output_neurons_per_entry" << std::endl;
+   std::cout << "num_sb_entries" << std::endl;
+   std::cout << "num_nbin_entries" << std::endl;
+   std::cout << "num_nbout_entries" << std::endl;
+   std::cout << "bit_width" << std::endl;
+   std::cout << "sb_addr" << std::endl;
+   std::cout << "nbin_addr" << std::endl;
+   std::cout << "nbout_addr" << std::endl;
+
    return 4;
  }
 
