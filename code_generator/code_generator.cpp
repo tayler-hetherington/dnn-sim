@@ -18,6 +18,7 @@
 
 #include "../src/cp_inst.h"
 #include "code_generator.h"
+#include "stat_keeper.h"
 
 cp_inst load_instruction(unsigned num_sb_to_load,
                          unsigned num_input_to_load,
@@ -138,19 +139,12 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
                                           unsigned nbout_addr,
                                           bool verbose) {
 
-
     // instruction to print out
     cp_inst inst;
 
     // various performance counter
-    unsigned byte_read = 0;         // number of bytes read from memory for one instruction
-    unsigned byte_write = 0;        // number of bytes written to memory for one instruction
-    unsigned total_byte_read = 0;   // total number of bytes read from memory
-    unsigned total_byte_write = 0;  // total number of bytes written to memory
     unsigned cycles = 0;            // cycles needed to execute current control instruction
-    unsigned total_cycles = 0;      // total number of cycles executed
-                                    // cycle count exclude pipeline and memory latency
-    unsigned bandwidth = 0;         // average bandwidth needed for current control instruction
+    stat_keeper stat;
 
     // intermediate data
     unsigned word_size = (bit_width + 7) / 8;
@@ -169,110 +163,83 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
 
     do {
 
-      remaining_synapses = num_input_neurons * num_output_neurons;
+      remaining_input_neurons  = num_input_neurons;
 
-      unsigned num_input_to_load = std::min(remaining_input_neurons, num_input_neurons_per_entry * num_nbin_entries);
-      unsigned num_sb_to_load = num_input_to_load * std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
-      num_nbout_to_write = std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
+      do {
 
-      // initial load
-      if (verbose)
-        std::cout << std::endl << "# grab the next set of NBin and SB"  << std::endl;
-      inst = load_instruction(num_sb_to_load, num_input_to_load, current_sb_pointer, current_nbin_pointer, word_size);
+        remaining_synapses = num_input_neurons * num_output_neurons;
 
-      // update counters
-      current_sb_pointer += num_sb_to_load * word_size;
-      current_nbin_pointer += num_input_to_load * word_size;
-      remaining_input_neurons  -= num_input_to_load;
-      remaining_synapses -= num_sb_to_load;
+        unsigned num_input_to_load = std::min(remaining_input_neurons, num_input_neurons_per_entry * num_nbin_entries);
+        unsigned num_sb_to_load = num_input_to_load * std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
+        num_nbout_to_write = std::min(remaining_output_neurons, num_output_neurons_per_entry * num_nbout_entries);
 
-      // stat for the instruction
-      cycles     = std::max(num_input_to_load / num_input_neurons_per_entry, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
-      byte_read  = inst.sb_size + inst.nbin_size;
-      byte_write = inst.nbout_size;
-      bandwidth  = (byte_read + byte_write) / cycles;
-
-      // accumulate the performance counters
-      total_cycles     += cycles;
-      total_byte_read  += byte_read;
-      total_byte_write += byte_write;
-
-      // output load instruction
-      std::cout << inst;
-      if (verbose)
-        std::cout << " # Cycles: " << cycles << " Bandwidth: " << bandwidth;
-      std::cout << std::endl;
-
-      // go through all the entries in NBin before reloading
-      // calculate how many NBin entries loaded into NBin
-      unsigned nbin_entry_loaded = (num_input_to_load + num_input_neurons_per_entry - 1) / num_input_neurons_per_entry;
-      if (verbose)
-        std::cout << std::endl << "# Compute classify, one instruction per entry, loaded " << nbin_entry_loaded << " entries into NBin"  << std::endl;
-      for (int current_nbin_entry = 0; current_nbin_entry < nbin_entry_loaded; current_nbin_entry++) {
-
-        // don't pre-load synapses for the last entry, they will be loaded at
-        // the next load instruction instead
-        if (current_nbin_entry == nbin_entry_loaded - 1)
-          num_sb_to_load = 0;
-
-        // compute instruction 
-        inst = classify_compute_instruction(num_sb_to_load, current_sb_pointer, is_new_block, word_size);
-
+        // initial load
+        if (verbose)
+          std::cout << std::endl << "# grab the next set of NBin and SB"  << std::endl;
+        inst = load_instruction(num_sb_to_load, num_input_to_load, current_sb_pointer, current_nbin_pointer, word_size);
         // update counters
         current_sb_pointer += num_sb_to_load * word_size;
+        current_nbin_pointer += num_input_to_load * word_size;
+        remaining_input_neurons  -= num_input_to_load;
         remaining_synapses -= num_sb_to_load;
-        is_new_block = false;
-  
-        // stat for instruction
-        cycles     = std::max(num_nbout_to_write / num_output_neurons_per_entry, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
-        byte_read  = inst.sb_size + inst.nbin_size;
-        byte_write = inst.nbout_size;
-        bandwidth  = (byte_read + byte_write) / cycles;
-  
-        // accumulate the performance counters
-        total_cycles     += cycles;
-        total_byte_read  += byte_read;
-        total_byte_write += byte_write;
-  
-        // output compute instruction
-        std::cout << inst;
+
+        // stat for the instruction
+        cycles = std::max(num_input_to_load / num_input_neurons_per_entry, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
+        stat.update(inst,cycles);
+
+        // output load instruction
+        std::cout << inst << stat.inst_report(verbose) << std::endl;
+
+        // go through all the entries in NBin before reloading
+        // calculate how many NBin entries loaded into NBin
+        unsigned nbin_entry_loaded = (num_input_to_load + num_input_neurons_per_entry - 1) / num_input_neurons_per_entry;
         if (verbose)
-          std::cout << " # Cycles: " << cycles << " Bandwidth: " << bandwidth;
-        std::cout << std::endl;
-      }
-    } while (remaining_input_neurons > 0);
+          std::cout << std::endl << "# Compute classify, one instruction per entry, loaded " << nbin_entry_loaded << " entries into NBin"  << std::endl;
 
-    // generate output instruction
-    inst = output_instruction(num_nbout_to_write, current_nbout_pointer, word_size);
+        for (int current_nbin_entry = 0; current_nbin_entry < nbin_entry_loaded; current_nbin_entry++) {
 
-    // update counters
-    remaining_output_neurons -= num_nbout_to_write;
-    current_nbout_pointer += num_nbout_to_write * word_size;
+          // don't pre-load synapses for the last entry, they will be loaded at
+          // the next load instruction instead
+          if (current_nbin_entry == nbin_entry_loaded - 1)
+            num_sb_to_load = 0;
 
-    // stat for instruction
-    cycles     = (num_nbout_to_write + num_output_neurons_per_entry - 1) / num_output_neurons_per_entry;
-    byte_read  = inst.sb_size + inst.nbin_size;
-    byte_write = inst.nbout_size;
-    bandwidth  = (byte_read + byte_write) / cycles;
+          // compute instruction 
+          inst = classify_compute_instruction(num_sb_to_load, current_sb_pointer, is_new_block, word_size);
 
-    // accumulate the performance counters
-    total_cycles     += cycles;
-    total_byte_read  += byte_read;
-    total_byte_write += byte_write;
+          // update counters
+          current_sb_pointer += num_sb_to_load * word_size;
+          remaining_synapses -= num_sb_to_load;
+          is_new_block = false;
+  
+          // stat for instruction
+          cycles     = std::max(num_nbout_to_write / num_output_neurons_per_entry, num_sb_to_load / num_input_neurons_per_entry / num_output_neurons_per_entry);
+          stat.update(inst,cycles);
 
-    if (verbose)
-      std::cout << std::endl << "# Store NBout"  << std::endl;
+          // output compute instruction
+          std::cout << inst << stat.inst_report(verbose) << std::endl;
+        }
+      } while (remaining_input_neurons > 0);
 
-    std::cout << inst;
-    if (verbose)
-      std::cout << " # Cycles: " << cycles << " Bandwidth: " << bandwidth;
-    std::cout << std::endl;
+      // generate output instruction
+      inst = output_instruction(num_nbout_to_write, current_nbout_pointer, word_size);
+
+      // update counters
+      remaining_output_neurons -= num_nbout_to_write;
+      current_nbout_pointer += num_nbout_to_write * word_size;
+
+      // stat for instruction
+      cycles     = (num_nbout_to_write + num_output_neurons_per_entry - 1) / num_output_neurons_per_entry;
+      stat.update(inst,cycles);
+
+      if (verbose)
+        std::cout << std::endl << "# Store NBout"  << std::endl;
+
+      std::cout << inst << stat.inst_report(verbose) << std::endl;
+
+    } while (remaining_output_neurons > 0);
 
     // print out summary
-    std::cout <<  std::endl;
-    std::cout << "# Total # of Cycles: " << total_cycles << std::endl;
-    std::cout << "# Total # of Bytes Read: " << total_byte_read << std::endl;
-    std::cout << "# Total # of Bytes Wrote: " << total_byte_write << std::endl;
+    std::cout << stat.code_report(verbose);
 
     // config entry for classify layer
     std::stringstream ss;
@@ -281,4 +248,3 @@ std::string generate_classify_layer_code (unsigned num_input_neurons,
     return ss.str();
 
 }
-

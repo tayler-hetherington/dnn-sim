@@ -3,11 +3,12 @@ CC=gcc
 CPP=g++
 CFLAGS= 
 LDFLAGS=-lpthread
-DEBUG?=0
+DEBUG?=1
 
 TARGET=classify
 SRC=.
 OBJ=obj
+DEP=../obj/cp_inst.o
 
 CPP_FILES=$(wildcard *.cpp)
 OBJ_FILES=$(addprefix $(OBJ)/,$(notdir $(CPP_FILES:.cpp=.o)))
@@ -29,7 +30,7 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	$(CPP) $(CFLAGS) -MMD -c $< -o $@
 
 $(TARGET): $(OBJ_FILES) 
-	$(CPP) -o $@ $^ ../obj/cp_inst.o $(LDFLAGS)
+	$(CPP) -o $@ $^ $(DEP) $(LDFLAGS)
 
 clean:
 	rm -rf $(TARGET) $(OBJ) *~
