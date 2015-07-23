@@ -100,6 +100,7 @@ void datapath::cycle(){
 
 bool datapath::insert_op(pipe_op *op){
     
+    if ( ! m_pipe_regs[0].empty() ) return false;
     std::cout << "Inserting Operation" << std::endl;
     
     m_tot_op_issue++;

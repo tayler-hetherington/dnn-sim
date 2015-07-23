@@ -28,10 +28,21 @@ BUGS:
     NFU_1: input non-empty                      // NFU is stalling for data
     SRAM port 0 is busy, increment access       // WHY
     SRAM port READ complete                     // sounds good, nothings happening
+        this should set_sram_op_complete
+        if(m_ports[i].m_op){ not executed
+
     Read sent                                   // to where?
 
 
 TODO:
+
+    sram needs to be redesigned
+        include DMA in sram
+        issue loads/stores to sram
+        sram will only load when there is space
+        pipe_ops will cause lines to be ejected
+        pipe_ops know which entry to read
+
   centralize stat collection?
   simple memory model
   DRAMsim?

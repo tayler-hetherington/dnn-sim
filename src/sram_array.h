@@ -17,6 +17,7 @@
 
 typedef struct _sram_line_ {
     bool m_valid;
+    unsigned m_addr; // for sanity check, we shouldn't need to store this in hardware
 }sram_line;
 
 typedef struct _sram_port_ {

@@ -134,7 +134,12 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                 std::cout << "DO_OP " << nbin_addr << " , " << sb_addr << " , " << nbout_addr << std::endl;
                 pipe_op * op = new pipe_op( nbin_addr, 1, sb_addr, 1, nbout_addr, 1 );
 
-                m_datapath->insert_op(op);
+                bool was_inserted = m_datapath->insert_op(op);
+
+                if (!was_inserted) {
+                    delete op;
+                    break;
+                }
 
                 m_sb_index++;
 
