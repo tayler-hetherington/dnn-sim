@@ -74,3 +74,6 @@ unsigned pipe_op::get_sram_size(sram_type type){
     return m_sram_op[type].size;
 }
 
+bool pipe_op::is_in_pipe_reg() { return m_in_pipe_reg; }
+void pipe_op::set_in_pipe_reg() { m_in_pipe_reg = true; }
+

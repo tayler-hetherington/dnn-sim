@@ -22,7 +22,7 @@ class pipe_stage {
 public:
     pipe_stage(pipe_reg *i_op, pipe_reg *o_op, unsigned queue_size, unsigned num_int_pipeline_stages);
     virtual ~pipe_stage();
-
+    void register_requests(pipe_reg *i_op);
     bool push_op(pipe_op *op);
     pipe_op *pop_op();
 
@@ -54,7 +54,10 @@ protected:
 // Set of multipliers - Multiply image and filters
 class nfu_1 : public pipe_stage {
 public:
-    nfu_1(pipe_reg *i_op, pipe_reg *o_op,
+    nfu_1(pipe_reg *i_op, pipe_reg *o_op, pipe_reg *requests_reg,
+          unsigned queue_size, unsigned num_int_pipeline_stages,
+          unsigned num_multipliers);
+     nfu_1(pipe_reg *i_op, pipe_reg *o_op, 
           unsigned queue_size, unsigned num_int_pipeline_stages,
           unsigned num_multipliers);
     virtual ~nfu_1();
@@ -66,6 +69,7 @@ public:
     
 private:
     // Functional units
+    pipe_reg* m_requests;
     unsigned m_num_multipliers;
     functional_unit **m_multipliers;    // Multipliers
 };

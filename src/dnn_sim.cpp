@@ -39,11 +39,13 @@ void dnn_sim::cycle(){
     
     m_sim_cycle++;
     std::cout << std::endl << "Cycle: " << m_sim_cycle << std::endl;
+    m_datapath->print_pipeline();
     
     // not sure about order here
     m_control_processor->cycle();
     m_dram_interface->cycle();
     m_datapath->cycle();
+
 }
 
 // FOR TESTING

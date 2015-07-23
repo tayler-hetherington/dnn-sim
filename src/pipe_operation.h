@@ -33,8 +33,11 @@ public:
     void set_read();
     void set_write();
     
+    bool is_in_pipe_reg();
+    void set_in_pipe_reg();
+    
 private:
-
+    bool m_in_pipe_reg;  //it indicates if the op has been already moved from the request queue to the pipeline queue
     bool m_is_read; // areant all ops reads?
     sram_op m_sram_op[NUM_SRAM_TYPE];
     bool sram_op_complete[NUM_SRAM_TYPE];

@@ -24,8 +24,10 @@ datapath::datapath(dnn_config const * const config) : m_config(config){
     
     // Create pipeline stage registers ( (num_stages-1) + 2)
     m_pipe_regs = new pipe_reg[m_n_stages + 1];
-    
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1, m_config->num_nfu1_multipliers);
+    //request to the SRAMs from the pipeline
+    m_pipe_requests = new pipe_reg[3]; //as many as SRAM types
+
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], &m_pipe_requests[0], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1, m_config->num_nfu1_multipliers);
     m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1, m_config->num_nfu2_adders, m_config->num_nfu2_shifters, m_config->num_nfu2_max);
     m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1, m_config->num_nfu3_multipliers, m_config->num_nfu3_adders);
     
@@ -42,17 +44,17 @@ datapath::datapath(dnn_config const * const config) : m_config(config){
     m_srams[NBin]   = new sram_array(NBin, m_config->nbin_line_length*bytes,
                                      m_config->nbin_num_lines, m_config->bit_width,
                                      m_config->nbin_num_ports, m_config->nbin_access_cycles,
-                                     &m_pipe_regs[0]);
+                                     &m_pipe_requests[0], &m_pipe_regs[0]);
     
     m_srams[NBout]  = new sram_array(NBout, m_config->nbout_line_length*bytes,
                                      m_config->nbout_num_lines, m_config->bit_width,
                                      m_config->nbout_num_ports, m_config->nbout_access_cycles,
-                                     &m_pipe_regs[3]);
+                                     &m_pipe_requests[2], &m_pipe_regs[3]);
     
     m_srams[SB]     = new sram_array(SB, m_config->sb_line_length*bytes,
                                      m_config->sb_num_lines, m_config->bit_width,
                                      m_config->sb_num_ports, m_config->sb_access_cycles,
-                                     &m_pipe_regs[0]);
+                                     &m_pipe_requests[0], &m_pipe_regs[0]);
     
     // Stats
     m_tot_op_issue = 0;
@@ -93,7 +95,7 @@ void datapath::cycle(){
     m_srams[NBin]->cycle();                     // Cycle NBin and SB SRAMs for read
     m_srams[SB]->cycle();
     
-    print_pipeline();
+    //print_pipeline();
 }
 
 bool datapath::insert_op(pipe_op *op){
@@ -102,7 +104,7 @@ bool datapath::insert_op(pipe_op *op){
     
     m_tot_op_issue++;
     op->set_read();
-    m_pipe_regs[0].push(op);
+    m_pipe_requests[0].push(op);
     
     return true;
 }
@@ -147,10 +149,5 @@ void datapath::print_pipeline(){
 void datapath::insert_dummy_op(pipe_op *op){
     m_pipe_stages[NFU1]->push_op(op);
 }
-
-
-
-
-
 
 

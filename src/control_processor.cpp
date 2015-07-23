@@ -31,15 +31,15 @@ control_processor::~control_processor(){
 
 void control_processor::cycle(){
 
-    if ( m_inst_queue.empty() ) return;
-    cp_inst * inst = &m_inst_queue.front();
+  if( ! m_inst_queue.empty()) {
     std::cout << "Current instruction: " << *inst << std::endl;
+    cp_inst * inst = &m_inst_queue.front();
     bool done = do_cp_inst(inst);
     if (done) {
         std::cout << "Popping Inst Queue\n";
         m_inst_queue.pop();
-
     }
+  }
 
 }
 
@@ -51,6 +51,7 @@ void control_processor::cycle(){
 //                  note that an instruction takes multiple cycles to execute
 // output:          true if all the pipe_ops have been issued
 bool control_processor::do_cp_inst(cp_inst *inst){
+    std::cout << "control_processor::do_cp_inst" << std::endl;    
     // FSM for each instruction
     memory_fetch *mf = NULL;
     bool pending_req = false;

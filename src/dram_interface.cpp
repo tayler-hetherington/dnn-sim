@@ -26,7 +26,7 @@ dram_interface::~dram_interface(){
 }
 
 void dram_interface::cycle(){
-    
+
     memory_fetch *mf = NULL;
     m_cur_dram_cycle++;
     
@@ -45,7 +45,6 @@ void dram_interface::cycle(){
           m_mem_queue.pop_front();
       }
   }
-    
 }
 
 bool dram_interface::do_access(memory_fetch *mf){
