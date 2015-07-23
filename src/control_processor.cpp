@@ -32,8 +32,8 @@ control_processor::~control_processor(){
 void control_processor::cycle(){
 
   if( ! m_inst_queue.empty()) {
-    std::cout << "Current instruction: " << *inst << std::endl;
     cp_inst * inst = &m_inst_queue.front();
+    std::cout << "Current instruction: " << *inst << std::endl;
     bool done = do_cp_inst(inst);
     if (done) {
         std::cout << "Popping Inst Queue\n";
