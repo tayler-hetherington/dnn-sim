@@ -10,7 +10,8 @@
 
 pipe_op::pipe_op(unsigned nb_in_addr, unsigned nb_in_size,
             unsigned sb_addr, unsigned sb_size,
-            unsigned nb_out_addr, unsigned nb_out_size){
+            unsigned nb_out_addr, unsigned nb_out_size,
+            unsigned serial_num){
 
     m_sram_op[NBin].addr = nb_in_addr;
     m_sram_op[NBin].size = nb_in_size;
@@ -18,6 +19,9 @@ pipe_op::pipe_op(unsigned nb_in_addr, unsigned nb_in_size,
     m_sram_op[NBout].size = nb_out_size;
     m_sram_op[SB].addr = sb_addr;
     m_sram_op[SB].size = sb_size;
+
+    m_serial_num = serial_num;
+
 
     m_is_read = false;
     
@@ -43,10 +47,8 @@ void pipe_op::set_write(){
     m_is_read = false;
 }
 
-
-
 bool pipe_op::is_read_complete(){
-        std::cout << "is_read_complete " << this << " : " << sram_op_complete[NBin] << " && " << sram_op_complete[SB] << std::endl;
+    std::cout << "is_read_complete " << this << " : " << sram_op_complete[NBin] << " && " << sram_op_complete[SB] << std::endl;
     if(sram_op_complete[NBin] && sram_op_complete[SB]) {
         std::cout << "read_complete " << this << std::endl;
         return true;
@@ -80,3 +82,4 @@ unsigned pipe_op::get_sram_size(sram_type type){
 bool pipe_op::is_in_pipe_reg() { return m_in_pipe_reg; }
 void pipe_op::set_in_pipe_reg() { m_in_pipe_reg = true; }
 
+unsigned pipe_op::get_serial() { return m_serial_num; }

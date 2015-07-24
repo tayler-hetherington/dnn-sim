@@ -15,8 +15,15 @@
 #include "common.h"
 #include "pipe_operation.h"
 
+// Simplification for faster bringup
+// SRAM reads and writes happen instantly
+// ignore ports, no compflicts
+#define FAST 1
+
 typedef struct _sram_line_ {
-    bool m_valid;
+    bool m_valid; // ready to be read
+    bool m_store_me; // ready to be stored to DRAM
+    bool m_partial_sum; // partial sum, can be overwritten
     unsigned m_addr; // for sanity check, we shouldn't need to store this in hardware
 }sram_line;
 
@@ -39,12 +46,18 @@ public:
     
     void cycle();
     bool is_sram_busy();
+
+
     bool read(pipe_op *op);
     bool write(pipe_op *op);
     
+    // 
     bool read(unsigned address, unsigned size);
     bool write(unsigned address, unsigned size);
     
+    // Checks if line with address is available to be read this cycle
+    bool available(pipe_op* op);
+
 private:
 
     ///////////////////

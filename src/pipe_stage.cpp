@@ -56,14 +56,25 @@ bool pipe_stage::is_pipe_reg_full(pipe_reg *reg){
         return false;
 }
 
+void pipe_stage::print_op(pipe_op * op){
+    if (op) {
+        std::cout << (op->get_serial());
+    } else {
+        std::cout << " ";
+    }
+}
+
 void pipe_stage::print_internal_pipeline(){
     pipe_op *op = NULL;
     if(!input_op->empty())
         op = input_op->front();
     
-    std::cout << " | " << op << " || ";
+    std::cout << " | "; 
+    print_op(op);
+    std::cout << " || ";
     for(unsigned i=0; i<=n_int_pipeline_stages; ++i){
-        std::cout << int_pipeline[i] << " | ";
+        print_op(int_pipeline[i]);
+        std::cout << " | ";
     }
     std::cout << std::endl;
     
@@ -145,10 +156,11 @@ void nfu_1::cycle(){
          std::cout << std::endl;
         int_pipeline[0] = NULL;
         
-        if(!input_op->empty()){
+        if( ! input_op->empty() ){
             // Only push through if both SRAM reads are complete
             std::cout << "NFU_1: input non-empty" << std::endl;
             op = input_op->front();
+            // read sram
             if( op->is_read_complete() ){
                 std::cout << "NFU_1: SRAM reads complete, pushing through" << std::endl;
                 input_op->pop();

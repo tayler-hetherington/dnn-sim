@@ -49,6 +49,8 @@ private:
     int m_sb_index;
     //  used to track progress of instruction in the DO_OP state
     //  since SB entries are never reused
+    //
+    int m_serial_counter;
 };
 
 #endif

@@ -22,6 +22,8 @@ control_processor::control_processor(dnn_config const * const cfg, datapath * dp
     m_dnn_config = cfg;
     m_datapath = dp;
     m_dram_interface = dram;
+    
+    m_serial_counter=0;
 
 }
 
@@ -132,8 +134,8 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                 int nbout_addr  = inst->nbout_address   + nbout_index   * m_dnn_config->nbout_line_length   * data_size;
 
                 std::cout << "DO_OP " << nbin_addr << " , " << sb_addr << " , " << nbout_addr << std::endl;
-                pipe_op * op = new pipe_op( nbin_addr, 1, sb_addr, 1, nbout_addr, 1 );
-
+                pipe_op * op = new pipe_op( nbin_addr, 1, sb_addr, 1, nbout_addr, 1, m_serial_counter);
+                // insert pipe_op into datapath
                 bool was_inserted = m_datapath->insert_op(op);
 
                 if (!was_inserted) {
@@ -142,6 +144,7 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                 }
 
                 m_sb_index++;
+                m_serial_counter++;
 
                 // should go to STORE_NBOUT first
                 if (m_sb_index == m_dnn_config->sb_num_lines) {

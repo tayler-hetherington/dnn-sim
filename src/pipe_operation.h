@@ -16,7 +16,9 @@ class pipe_op {
 public:
     pipe_op(unsigned nb_in_addr, unsigned nb_in_size,
             unsigned sb_addr, unsigned sb_size,
-            unsigned nb_out_addr, unsigned nb_out_size);
+            unsigned nb_out_addr, unsigned nb_out_size,
+            unsigned serial_num
+            );
 
     ~pipe_op();
 
@@ -36,11 +38,15 @@ public:
     bool is_in_pipe_reg();
     void set_in_pipe_reg();
     
+    unsigned get_serial();
 private:
     bool m_in_pipe_reg;  //it indicates if the op has been already moved from the request queue to the pipeline queue
     bool m_is_read; // areant all ops reads?
     sram_op m_sram_op[NUM_SRAM_TYPE];
     bool sram_op_complete[NUM_SRAM_TYPE];
+
+    unsigned m_serial_num;
+
 };
 
 

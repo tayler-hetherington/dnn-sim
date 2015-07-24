@@ -46,6 +46,7 @@ protected:
     unsigned n_int_pipeline_stages;
     pipe_op **int_pipeline;
     
+    void print_op(pipe_op * op);
     
 };
 

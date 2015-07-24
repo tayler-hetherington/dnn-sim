@@ -105,7 +105,17 @@ bool datapath::insert_op(pipe_op *op){
     
     m_tot_op_issue++;
     op->set_read();
+
+    // we aren't using this right now
     m_pipe_requests[0].push(op);
+
+    // pushing op directly to pipeline
+    m_pipe_regs[0].push(op);
+
+    // if pipe_reg[0] is empty then we should be able to read the buffers as well
+    m_srams[NBin]->read(op);
+    m_srams[SB]->read(op);
+
     
     return true;
 }
