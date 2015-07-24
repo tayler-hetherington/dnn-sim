@@ -22,6 +22,7 @@
 class dnn_sim {
 
 public:
+
     dnn_sim(dnn_config *config);
     
     ~dnn_sim();
@@ -31,7 +32,10 @@ public:
     bool insert_op(pipe_op *op); // Keeping this for testing
     bool insert_inst(cp_inst *inst);
     bool is_test_done();
+
     void print_stats();
+
+    bool read_instructions();
     
 
 private:

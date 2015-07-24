@@ -50,6 +50,10 @@ public:
     unsigned num_nfu3_pipeline_stages;
     unsigned num_nfu3_multipliers;
     unsigned num_nfu3_adders;
+
+    // N_o need to change for each layer
+    // this probably shouldn't be a parameter but I don't know how you can infer it from the instructions
+    unsigned num_outputs;
 };
 
 #endif

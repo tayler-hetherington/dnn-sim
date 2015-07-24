@@ -12,6 +12,8 @@
 #ifndef __CONTROL_PROCESSOR_H__
 #define __CONTROL_PROCESSOR_H__
 
+#include <iostream>
+
 #include "common.h"
 
 #include "config.h"
@@ -32,6 +34,7 @@ public:
     void cycle(); 
     void test(cp_inst *inst);
     bool is_test_done();
+    bool read_instructions(std::istream & is);
 
     // DRAM
     void read_complete_callback(unsigned id, mem_addr address, uint64_t clock_cycle);
@@ -54,7 +57,9 @@ private:
    
     std::queue<cp_inst> m_inst_queue;
 
-
+    int m_sb_index;
+    //  used to track progress of instruction in the DO_OP state
+    //  since SB entries are never reused
 };
 
 #endif

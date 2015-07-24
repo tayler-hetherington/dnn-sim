@@ -46,10 +46,13 @@ void pipe_op::set_write(){
 
 
 bool pipe_op::is_read_complete(){
-    if(sram_op_complete[NBin] && sram_op_complete[SB])
+        std::cout << "is_read_complete " << this << " : " << sram_op_complete[NBin] << " && " << sram_op_complete[SB] << std::endl;
+    if(sram_op_complete[NBin] && sram_op_complete[SB]) {
+        std::cout << "read_complete " << this << std::endl;
         return true;
-    else
+    } else {
         return false;
+    }
 }
 
 bool pipe_op::is_write_complete(){

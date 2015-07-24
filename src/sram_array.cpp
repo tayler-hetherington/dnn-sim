@@ -39,9 +39,9 @@ sram_array::sram_array(sram_type type, unsigned line_size, unsigned num_lines, u
     // Setup lines
     m_lines = new sram_line[m_n_lines];
     for(unsigned i=0; i<m_n_lines; ++i) {
-//        m_lines[i].m_valid = false;
+        m_lines[i].m_valid = false;
         // FIXME:
-        m_lines[i].m_valid = true;
+        // m_lines[i].m_valid = true;
     }
     
     
@@ -63,11 +63,11 @@ void sram_array::cycle() {
             std::cout << "SRAMtype " <<  m_sram_type << " port " << i << " is busy, increment access" << std::endl;
             m_ports[i].m_cur_access_cycle++;
             if(m_ports[i].m_cur_access_cycle >= m_cycles_per_access) {
-                std::cout << "SRAM port ";
+                std::cout << "SRAM" << m_sram_type << " port " << i;
                 if(m_ports[i].m_is_read){
-                    std::cout << "READ";
+                    std::cout << " READ";
                 }else{
-                    std::cout << "WRITE";
+                    std::cout << " WRITE";
                 }
                 std::cout << " complete" << std::endl;
                 m_ports[i].m_is_busy = false;
@@ -104,7 +104,7 @@ void sram_array::cycle() {
 // Reads a line from the SRAM array
 bool sram_array::read(pipe_op* op){
 
-    std::cout << "Read sent" << std::endl;
+    std::cout << "SRAM" << m_sram_type << " Read (op) sent" << std::endl;
     // Check line is valid
     if(!check_addr(op->get_sram_addr(m_sram_type)))
         return false;
@@ -116,7 +116,8 @@ bool sram_array::read(pipe_op* op){
     
     // Find first available port to read from
     for(unsigned i=0; i<m_n_rw_ports; ++i) {
-        if(!m_ports[i].m_is_busy){ // If not already handling another request
+        if( ! m_ports[i].m_is_busy){ // If not already handling another request
+            std::cout << "SRAM" << m_sram_type << " reading on port " << i << std::endl;
             m_ports[i].m_is_busy = true;
             m_ports[i].m_is_read = true;
             m_ports[i].m_cur_access_cycle = 0;
@@ -140,6 +141,7 @@ bool sram_array::read(unsigned address, unsigned size){
     if(!check_addr(address))
         return false;
     
+    // assuming that all addresses streams will be sequential
     unsigned index = (address / (m_bit_width/2) ) % m_n_lines;
     
     if(!m_lines[index].m_valid)
@@ -147,7 +149,8 @@ bool sram_array::read(unsigned address, unsigned size){
     
     // Find first available port to read from
     for(unsigned i=0; i<m_n_rw_ports; ++i) {
-        if(!m_ports[i].m_is_busy){ // If not already handling another request
+        if( ! m_ports[i].m_is_busy ){ // If not already handling another request
+            std::cout << "SRAM" << m_sram_type << " reading on port " << i << std::endl;
             m_ports[i].m_is_busy = true;
             m_ports[i].m_is_read = true;
             m_ports[i].m_cur_access_cycle = 0;
@@ -165,7 +168,7 @@ bool sram_array::read(unsigned address, unsigned size){
 
 // Reads to a line in the SRAM array
 bool sram_array::write(unsigned address, unsigned size){
-    std::cout << "Write sent" << std::endl;
+    std::cout << "SRAM" << m_sram_type << " Write (addr,size) sent" << std::endl;
     // Check line is valid
     if(!check_addr(address))
         return false;
@@ -175,6 +178,7 @@ bool sram_array::write(unsigned address, unsigned size){
     // Find first available port to read from
     for(unsigned i=0; i<m_n_rw_ports; ++i) {
         if(!m_ports[i].m_is_busy){ // If not already handling another request
+            std::cout << "SRAM" << m_sram_type << " writing on port " << i << std::endl;
             m_ports[i].m_is_busy = true;
             m_ports[i].m_is_read = false;
             m_ports[i].m_cur_access_cycle = 0;
@@ -189,7 +193,7 @@ bool sram_array::write(unsigned address, unsigned size){
 }
 
 bool sram_array::write(pipe_op *op){
-    std::cout << "Write sent" << std::endl;    
+    std::cout << "Write (op) sent" << std::endl;    
     // Check line is valid
     if(!check_addr(op->get_sram_addr(m_sram_type)))
         return false;
@@ -202,6 +206,7 @@ bool sram_array::write(pipe_op *op){
     // Find first available port to read from
     for(unsigned i=0; i<m_n_rw_ports; ++i) {
         if(!m_ports[i].m_is_busy){ // If not already handling another request
+            std::cout << "SRAM" << m_sram_type << " writing on port " << i << std::endl;
             m_ports[i].m_is_busy = true;
             m_ports[i].m_is_read = false;
             m_ports[i].m_cur_access_cycle = 0;

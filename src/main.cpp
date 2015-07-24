@@ -70,7 +70,6 @@ void *main_sim_loop(void *args){
         m_dnn_sim->insert_op(op[i]);
         m_dnn_sim->cycle();
     }
-    
     for(unsigned i=0; i<20; ++i){
         m_dnn_sim->cycle();
     }
