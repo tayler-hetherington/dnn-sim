@@ -107,7 +107,7 @@ m_num_multipliers(num_multipliers){
     
 }
 
-nfu_1::nfu_1(pipe_reg *i_op, pipe_reg *o_op , pipe_reg *requests_reg,
+nfu_1::nfu_1(pipe_reg *i_op, pipe_reg *o_op , pipe_reg *requests_reg,  sram_array * nbin, sram_array * sb,
              unsigned queue_size, unsigned num_int_pipeline_stages,
              unsigned num_multipliers) :
 pipe_stage(i_op, o_op, queue_size, num_int_pipeline_stages),
@@ -119,6 +119,8 @@ m_num_multipliers(num_multipliers), m_requests(requests_reg){
         m_multipliers[i] = new functional_unit();
     }
     
+    m_nbin = nbin;
+    m_sb = sb;
 }
 
 
@@ -161,7 +163,9 @@ void nfu_1::cycle(){
             std::cout << "NFU_1: input non-empty" << std::endl;
             op = input_op->front();
             // read sram
-            if( op->is_read_complete() ){
+            if( m_nbin->available(op) && m_sb->available(op) ) {
+                m_nbin->read(op);
+                m_sb->read(op);
                 std::cout << "NFU_1: SRAM reads complete, pushing through" << std::endl;
                 input_op->pop();
                 int_pipeline[0] = op;

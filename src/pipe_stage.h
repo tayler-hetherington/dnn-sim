@@ -12,6 +12,7 @@
 #include "common.h"
 #include "pipe_operation.h"
 #include "functional_unit.h"
+#include "sram_array.h"
 
 #ifndef __PIPELINE_STAGE_H__
 #define __PIPELINE_STAGE_H__
@@ -55,7 +56,7 @@ protected:
 // Set of multipliers - Multiply image and filters
 class nfu_1 : public pipe_stage {
 public:
-    nfu_1(pipe_reg *i_op, pipe_reg *o_op, pipe_reg *requests_reg,
+    nfu_1(pipe_reg *i_op, pipe_reg *o_op, pipe_reg *requests_reg, sram_array * nbin, sram_array * sb,
           unsigned queue_size, unsigned num_int_pipeline_stages,
           unsigned num_multipliers);
      nfu_1(pipe_reg *i_op, pipe_reg *o_op, 
@@ -73,6 +74,8 @@ private:
     pipe_reg* m_requests;
     unsigned m_num_multipliers;
     functional_unit **m_multipliers;    // Multipliers
+    sram_array * m_nbin;
+    sram_array * m_sb;
 };
 
 // Set of adders - Add results from nfu_1

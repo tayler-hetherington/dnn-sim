@@ -27,9 +27,6 @@ datapath::datapath(dnn_config const * const config) : m_config(config){
     //request to the SRAMs from the pipeline
     m_pipe_requests = new pipe_reg[3]; //as many as SRAM types
 
-    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], &m_pipe_requests[0], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1, m_config->num_nfu1_multipliers);
-    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1, m_config->num_nfu2_adders, m_config->num_nfu2_shifters, m_config->num_nfu2_max);
-    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1, m_config->num_nfu3_multipliers, m_config->num_nfu3_adders);
     
     // FIXME: Will need to fix this when not multiples of 8-bits
     // bytes per data element
@@ -56,6 +53,10 @@ datapath::datapath(dnn_config const * const config) : m_config(config){
                                      m_config->sb_num_ports, m_config->sb_access_cycles,
                                      &m_pipe_requests[0], &m_pipe_regs[0]);
     
+    m_pipe_stages[NFU1] = new nfu_1(&m_pipe_regs[0], &m_pipe_regs[1], &m_pipe_requests[0], m_srams[NBin], m_srams[SB], m_max_buffer_size, m_config->num_nfu1_pipeline_stages-1, m_config->num_nfu1_multipliers);
+    m_pipe_stages[NFU2] = new nfu_2(&m_pipe_regs[1], &m_pipe_regs[2], m_max_buffer_size, m_config->num_nfu2_pipeline_stages-1, m_config->num_nfu2_adders, m_config->num_nfu2_shifters, m_config->num_nfu2_max);
+    m_pipe_stages[NFU3] = new nfu_3(&m_pipe_regs[2], &m_pipe_regs[3], m_max_buffer_size, m_config->num_nfu3_pipeline_stages-1, m_config->num_nfu3_multipliers, m_config->num_nfu3_adders);
+
     // Stats
     m_tot_op_issue = 0;
     m_tot_op_complete = 0;

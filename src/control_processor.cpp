@@ -53,7 +53,7 @@ void control_processor::cycle(){
 //                  note that an instruction takes multiple cycles to execute
 // output:          true if all the pipe_ops have been issued
 bool control_processor::do_cp_inst(cp_inst *inst){
-    std::cout << "control_processor::do_cp_inst" << std::endl;    
+    //std::cout << "control_processor::do_cp_inst" << std::endl;    
     // FSM for each instruction
     memory_fetch *mf = NULL;
     bool pending_req = false;
