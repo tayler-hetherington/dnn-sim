@@ -14,6 +14,7 @@
 #include <sstream>
 
 // Testing
+//#define TEST
 static bool is_test_complete = false;
 
 
@@ -22,8 +23,12 @@ control_processor::control_processor(dnn_config const * const cfg, datapath * dp
     m_dnn_config = cfg;
     m_datapath = dp;
     m_dram_interface = dram;
-    
+
     m_serial_counter=0;
+   
+    m_read_callback = new DRAMSim::Callback<control_processor, void, unsigned, uint64_t, uint64_t>(this, &control_processor::read_complete_callback);
+    m_write_callback = new DRAMSim::Callback<control_processor, void, unsigned, uint64_t, uint64_t>(this, &control_processor::write_complete_callback);
+    m_dram_interface->set_callbacks(m_read_callback, m_write_callback);
 
 }
 
@@ -59,7 +64,6 @@ bool control_processor::do_cp_inst(cp_inst *inst){
     bool pending_req = false;
     bool done = false;
 
-
     // All these states should be pipelined, we want to start computing once 
     // the first buffer entries are loaded
     switch(inst->m_state){
@@ -67,33 +71,42 @@ bool control_processor::do_cp_inst(cp_inst *inst){
 
         case cp_inst::LOAD_SB: // Load from DRAM into the SB SRAM
             std::cout << "LOAD_SB " << inst->sb_address << std::endl;
-            mf = new memory_fetch(inst->sb_address, inst->sb_size, READ, SB);
-            m_dram_interface->do_access(mf);
+            if(m_dram_interface->can_accept_request()){
+                mf = new memory_fetch(inst->sb_address, inst->sb_size, READ, SB);
 
-            if(inst->nbin_read_op == cp_inst::LOAD){
-                inst->m_state = cp_inst::LOAD_NBIN;
-            }else{
-                inst->m_state = cp_inst::DO_OP;
+                // TODO: This is only going to get one part of the data. The control processor will need to
+                // issue multiple DRAM read requests to populate the NBin and SB SRAMs
+                // m_dram_interface->do_access(mf);
+                m_dram_interface->push_request(mf->m_addr, false);
+               
+                if(inst->nbin_read_op == cp_inst::LOAD){
+                    inst->m_state = cp_inst::LOAD_NBIN;
+                }else{
+                    inst->m_state = cp_inst::DO_OP;
+                }
+
+                //mf->m_is_complete = true; // HACH for TESTING
+                m_mem_requests.push_back(mf); // Add memory fetch to pending queue
+
+                m_sb_index = 0;
             }
-
-            //mf->m_is_complete = true; // HACH for TESTING
-            m_mem_requests.push(mf); // Add memory fetch to pending queue
-
-            m_sb_index = 0;
-
             break;
 
         case cp_inst::LOAD_NBIN: // Load from DRAM into the NBin SRAM
             std::cout << "LOAD_NBIN " << inst->nbin_address << std::endl;
+            if(m_dram_interface->can_accept_request()){
+                mf = new memory_fetch(inst->nbin_address, inst->nbin_size, READ, NBin);
 
-            mf = new memory_fetch(inst->nbin_address, inst->nbin_size, READ, NBin);
-            m_dram_interface->do_access(mf);
+                // TODO: This is only going to get one part of the data. The control processor will need to
+                // issue multiple DRAM read requests to populate the NBin and SB SRAMs
+                // m_dram_interface->do_access(mf);
+                m_dram_interface->push_request(mf->m_addr, false);
 
-            inst->m_state = cp_inst::DO_OP;
+                inst->m_state = cp_inst::DO_OP;
 
-           // mf->m_is_complete = true; // HACK for TESTING
-            m_mem_requests.push(mf); // Add memory fetch to pending queue
-
+               // mf->m_is_complete = true; // HACK for TESTING
+                m_mem_requests.push_back(mf); // Add memory fetch to pending queue
+            }
             break;
 
         case cp_inst::DO_OP: // All data is loaded into the SRAMs, push pipe_ops into the main dnn_sim pipeline
@@ -106,8 +119,10 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                     // Write the data to the SRAM
                     if(m_datapath->write_sram(mf->m_addr, mf->m_size, mf->m_sram_type)){
                         // Write went through, pop the request from the mem_req queue
-                        m_mem_requests.pop();
-                    }else{
+                        m_mem_requests.pop_front();
+                        if(m_mem_requests.size() > 0)
+                            pending_req = true;
+                    }else {
                         // Otherwise, all SRAM ports were busy, try again next cycle
                         return false;
                     }
@@ -122,7 +137,7 @@ bool control_processor::do_cp_inst(cp_inst *inst){
             // Patrick: Can't we start processing data while the buffers are being filled?
             if(!pending_req) {
                 // This is where I would start creating "pipe_ops" to perform the convolution, cycling through the different filters loaded into SB
-
+                 std::cout << "Start proccessing pipeline" << std::endl; 
                 int data_size = (m_dnn_config->bit_width / 8); // in bytes
 
                 int num_output_lines = m_dnn_config->num_outputs / m_dnn_config->nbout_line_length; // 16 = 256 / 16
@@ -146,6 +161,12 @@ bool control_processor::do_cp_inst(cp_inst *inst){
                 m_sb_index++;
                 m_serial_counter++;
 
+#ifdef TEST
+                // Temporarily end test after DRAM reads complete and pipeline starts
+                done = true;
+                is_test_complete = true;
+#endif
+
                 // should go to STORE_NBOUT first
                 if (m_sb_index == m_dnn_config->sb_num_lines) {
                     done = true;
@@ -166,6 +187,32 @@ bool control_processor::do_cp_inst(cp_inst *inst){
     return done;
 }
 
+
+void control_processor::read_complete_callback(unsigned id, mem_addr address, uint64_t clock_cycle){
+    std::cout << "DRAM Read callback for address "  <<  address << " (cycle: " << clock_cycle << ")" << std::endl;
+
+    std::deque<memory_fetch *>::iterator it;
+    for(it = m_mem_requests.begin(); it != m_mem_requests.end(); ++it){
+        if(address == (*it)->m_addr){
+            (*it)->m_is_complete = true;
+            break;
+        }
+    }
+
+}
+
+void control_processor::write_complete_callback(unsigned id, mem_addr address, uint64_t clock_cycle){
+    std::cout << "DRAM Write callback for address "  <<  address << " (cycle: " << clock_cycle << ")" << std::endl; 
+}
+
+bool control_processor::is_test_done(){
+    return is_test_complete;
+}
+
+void control_processor::test(cp_inst *inst){
+    m_inst_queue.push(*inst);
+
+# if 0
 void control_processor::test(){
 
     // Test full load into SB and NBin
@@ -195,8 +242,8 @@ void control_processor::test(){
     while(!is_test_complete){
         do_cp_inst(m_inst);
     }
-
     delete m_inst;
+#endif
 }
 
 bool control_processor::read_instructions(std::istream & is){

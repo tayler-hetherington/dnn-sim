@@ -30,11 +30,9 @@ TODO:
         include DMA in sram (or let control proc do this)
         issue loads/stores to sram
         sram will only load when there is space
-        pipe_ops will cause lines to be ejected
+        pipe_ops will cause lines to be ejected 
         pipe_ops know which entry to read
 
-    pipe_reg should poll sram for data
-        give pipe_stage[0] pointers to srams
 
   centralize stat collection?
   simple memory model

@@ -12,13 +12,53 @@
 
 #include "dram_interface.h"
 
+//#include <MultiChannelMemorySystem.h>
 
 
+dram_interface::dram_interface(const std::string& dram_config_file, 
+                                const std::string& system_config, 
+                                const std::string& dram_sim_dir,
+                                const std::string& prog_name,
+                                unsigned memory_size){
+
+    
+    /* Create the main DRAMSim object */
+    m_dram_sim = DRAMSim::getMemorySystemInstance(dram_config_file, 
+                                            system_config, 
+                                            dram_sim_dir, 
+                                            prog_name, 
+                                            memory_size);
+    
+    m_dram_sim->setCPUClockSpeed(0);
+
+
+}
+
+dram_interface::~dram_interface(){
+   delete m_dram_sim; 
+}
+
+void dram_interface::dram_interface::cycle(){
+    m_dram_sim->update();
+}
+
+bool dram_interface::can_accept_request() const {
+    return m_dram_sim->willAcceptTransaction();
+}
+
+void dram_interface::push_request(mem_addr addr, bool is_write){
+    m_dram_sim->addTransaction(is_write, addr);
+}
+
+void dram_interface::set_callbacks(DRAMSim::TransactionCompleteCB *read_callback,
+                   DRAMSim::TransactionCompleteCB *write_callback){
+     m_dram_sim->RegisterCallbacks(read_callback, write_callback, NULL);
+}
+
+#if 0
 dram_interface::dram_interface(unsigned access_latency, unsigned max_pending_req) :
     m_access_latency(access_latency), m_max_pending_req(max_pending_req), m_cur_dram_cycle(0), m_num_reads(0), m_num_writes(0){
-    
-    
-    
+        
 }
 
 dram_interface::~dram_interface(){
@@ -70,4 +110,5 @@ unsigned dram_interface::get_num_reads(){
 unsigned dram_interface::get_num_writes(){
     return m_num_writes;
 }
+#endif
 

@@ -2,7 +2,8 @@
 CC=gcc
 CPP=g++
 CFLAGS= 
-LDFLAGS=-lpthread
+DRAM_SIM=./DRAMSim2/
+LDFLAGS=-lpthread -ldramsim -Wl,-rpath=$(DRAM_SIM)
 DEBUG?=0
 
 TARGET=dnn-sim
@@ -20,20 +21,26 @@ else
 endif
 
 
-all: dir $(TARGET)
+all: dir DRAMSim $(TARGET)
 
 dir:
 	@mkdir -p $(OBJ)
 
 $(OBJ)/%.o: $(SRC)/%.cpp
-	$(CPP) $(CFLAGS) -MMD -c $< -o $@
+	$(CPP) $(CFLAGS) -I$(DRAM_SIM) -MMD -c $< -o $@
+
+DRAMSim:
+	@echo "Building DRAMSim"
+	make -C DRAMSim2/ 
+	make libdramsim.so -C DRAMSim2/
 
 $(TARGET): $(OBJ_FILES)
-	$(CPP) -o $@ $^ $(LDFLAGS)
+	$(CPP) -o $@ $^ $(LDFLAGS) -L$(DRAM_SIM) 
 
 
 clean:
 	rm -rf $(TARGET) $(OBJ) *~
+	make clean -C DRAMSim2/
 
 
 -include $(DEP_FILES)

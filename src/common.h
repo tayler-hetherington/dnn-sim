@@ -21,7 +21,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <math.h>
-
+#include <stdint.h>
 
 enum sram_type {
     NBin = 0,
@@ -44,7 +44,7 @@ enum pipeline_stage {
 };
 
 
-typedef unsigned long mem_addr;
+typedef uint64_t mem_addr;
 
 enum mem_access_type {
     READ = 0,

@@ -15,12 +15,42 @@
 
 #include "common.h"
 #include "pipe_operation.h"
-
 #include "mem_fetch.h"
 
+
+#include <DRAMSim.h>
+#include <string>
+
 /*
- *   DRAM interface
+ *   DRAM interface using DRAMSim2
  */
+class dram_interface {
+public:
+    
+    dram_interface(const std::string& dram_config_file,
+                    const std::string& system_config,
+                    const std::string& dram_sim_dir,
+                    const std::string& prog_name,
+                    unsigned memory_size);
+
+    ~dram_interface();
+
+    void cycle();
+    bool can_accept_request() const;
+    void push_request(mem_addr addr, bool is_write);
+
+    void set_callbacks(DRAMSim::TransactionCompleteCB *read_callback, 
+                       DRAMSim::TransactionCompleteCB *write_callback);
+
+private:
+
+    DRAMSim::MultiChannelMemorySystem *m_dram_sim;
+
+};
+
+
+#if 0
+// Old simple DRAM interface
 class dram_interface {
   
 public:
@@ -47,6 +77,8 @@ private:
     unsigned m_num_reads;
     unsigned m_num_writes;
 };
+#endif
+
 
 
 
