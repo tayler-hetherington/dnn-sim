@@ -17,6 +17,7 @@
 #include "dram_interface.h"
 #include "control_processor.h"
 #include "datapath.h"
+#include "cp_inst.h"
 
 class dnn_sim {
 
@@ -28,8 +29,11 @@ public:
     void cycle(); // Top level cycle function.
     
     bool insert_op(pipe_op *op); // Keeping this for testing
+    bool insert_inst(cp_inst *inst);
+    bool is_test_done();
     void print_stats();
     
+
 private:
 
     // Configs

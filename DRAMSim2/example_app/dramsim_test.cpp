@@ -95,8 +95,11 @@ int main()
 	TransactionCompleteCB *read_cb = new Callback<some_object, void, unsigned, uint64_t, uint64_t>(&obj, &some_object::read_complete);
 	TransactionCompleteCB *write_cb = new Callback<some_object, void, unsigned, uint64_t, uint64_t>(&obj, &some_object::write_complete);
 
-	/* pick a DRAM part to simulate */
-	MultiChannelMemorySystem *mem = getMemorySystemInstance("ini/DDR2_micron_16M_8b_x8_sg3E.ini", "system.ini", "..", "example_app", 16384); 
+   	/* pick a DRAM part to simulate */
+	//MultiChannelMemorySystem *mem = getMemorySystemInstance("ini/DDR2_micron_16M_8b_x8_sg3E.ini", "system.ini", "..", "example_app", 16384); 
+    MultiChannelMemorySystem *mem = getMemorySystemInstance("ini/DDR3_micron_16M_8B_x8_sg15.ini", "system.ini", "..", "example_app", 16384);
+
+   
     mem->setCPUClockSpeed(980000000);
 	mem->RegisterCallbacks(read_cb, write_cb, power_callback);
 

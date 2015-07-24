@@ -1,6 +1,7 @@
 #include "common.h"
 
 #include "dnn_sim.h"
+#include "cp_inst.h"
 #include "config.h"
 #include "option_parser.h"
 
@@ -62,7 +63,7 @@ void *main_sim_loop(void *args){
 
     
     // DEBUG: Testing inserting 4 ops
-    
+#if 0    
     pipe_op *op[4];
     for(unsigned i=0; i<4; ++i){
         op[i] = new pipe_op(0, 32, 0, 256, 0, 32);
@@ -73,6 +74,37 @@ void *main_sim_loop(void *args){
     for(unsigned i=0; i<20; ++i){
         m_dnn_sim->cycle();
     }
+#endif
+
+    // Test full load into SB and NBin
+    cp_inst *m_inst = new cp_inst();
+    
+    // Set test data
+    m_inst->sb_read_op = cp_inst::LOAD;
+    m_inst->sb_reuse = 0;
+    m_inst->sb_address = 0;
+    m_inst->sb_size = 32768;
+    
+    
+    m_inst->nbin_read_op = cp_inst::LOAD;
+    m_inst->nbin_reuse = 0;
+    m_inst->nbin_stride = 0;
+    m_inst->nbin_stride_begin = 0;
+    m_inst->nbin_stride_end = 0;
+    m_inst->nbin_address = 4194304;
+    m_inst->nbin_size = 2048;
+    
+    // TODO: Add main NFU stages and NBout config
+
+    m_inst->m_state = cp_inst::LOAD_NBIN;
+    
+    // Cycle through the state machine for this test instruction
+    m_dnn_sim->insert_inst(m_inst);
+    while(!m_dnn_sim->is_test_done()){
+          m_dnn_sim->cycle();
+    }   
+
+    delete m_inst;
     
     return NULL;
 }

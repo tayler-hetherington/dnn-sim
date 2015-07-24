@@ -15,8 +15,13 @@
 dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
     
     // Create main DRAM interface
-    // FIXME: Fix these values
-    m_dram_interface = new dram_interface(400, 32);
+    // TODO: Make parameters configurable
+    //m_dram_interface = new dram_interface(400, 32);
+    m_dram_interface = new dram_interface("ini/DDR2_micron_16M_8b_x8_sg3E.ini", 
+                                            "system.ini", 
+                                            "./DRAMSim2/", 
+                                            "dnn_sim", 
+                                            16384);
 
     m_datapath = new datapath(m_config);
 
@@ -47,7 +52,14 @@ void dnn_sim::cycle(){
 
 // FOR TESTING
 bool dnn_sim::insert_op(pipe_op * op){
-  m_datapath->insert_op(op);
+  //m_datapath->insert_op(op);
+}
+bool dnn_sim::insert_inst(cp_inst *inst){
+    m_control_processor->test(inst);
+}
+
+bool dnn_sim::is_test_done(){
+    return m_control_processor->is_test_done();
 }
 
 void dnn_sim::print_stats(){
