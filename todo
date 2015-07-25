@@ -7,6 +7,13 @@ dnn_sim
     buffers
     NFU pipeline
 
+high level operation:
+    control processor:
+        preloads data from queued instructions until buffer is full
+            can look multiple insturctions in the future
+        issues pipe_ops if there is space in the pipeline
+        pipe_ops will poll buffers for the data to be ready
+
 the control processor has pointers to datapath and dram_interface which it can use to micromanage them (everything is public)
   we can convert this to a proper interface later
 
@@ -19,10 +26,10 @@ what about NBout?
 
     
 
-start with datapath, assume input buffers are full, ignore memory
 
 BUGS:
-    
+    pipe_op 16 gets stuck in pipe_reg[0]
+    pipe_op 8 gets stuck at the end of NFU3
 
 TODO:
 
