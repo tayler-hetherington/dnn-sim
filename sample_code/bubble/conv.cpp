@@ -57,16 +57,23 @@ int main(int argc, char** argv){
     read_filters(FILTER_FILE, synapse, synapseSize);
 
     int count = 0;
+    int zeroCount = 0;
 
     int yout = 0;
     for (int yy = 0; yy <= Ax-Ky; yy += Ty) { // tile x
+        //printf("yy=%d\n", yy);
         int xout = 0;
         for (int xx = 0; xx <= Ay-Kx; xx += Tx) { // tile y
+            //printf("xx=%d\n", xx);
             for (int nnn = 0; nnn < Nn; nnn += Tnn) { // tile n
+                //printf("nnn=%d\n", nnn);
 
                 for (int y = yy; y < yy + Ty; y += sy) { // slide window in y
+                    //printf("y=%d\n", y);
                     for (int x = xx; x < xx + Tx; x += sx) { // slide window in x
-                        for (int nn = nnn; nn < nnn + Tnn; nn += Tn) { // tile for output buffer
+                        //printf("x=%d\n", x);
+                        for (int nn = nnn; (nn < nnn + Tnn) && (nn < Nn); nn += Tn) { // tile for output buffer
+                            //printf("nn=%d\n", nn);
 
                             // initialize sum
                             for (int n = nn; n < nn + Tn; n++) {
@@ -79,7 +86,7 @@ int main(int argc, char** argv){
                                     for (int ii = 0; ii < Ni; ii += Ti){
                                         
                                         int rowIdx = (ky * Kx + kx) * Ni + ii;
-                                        printf ("rowIdx=%d\n", rowIdx);
+                                        //printf ("rowIdx=%d\n", rowIdx);
                                         
 
                                         // These loops happen in parallel in one pipe_op:
@@ -88,8 +95,22 @@ int main(int argc, char** argv){
                                                 // version with shared kernels
 
                                                 //sum[n] += synapse[ky][kx][n][i] * neuron[ky + y][kx + x][i];
+                                                //
                                                 int sIdx = ( (ky*Kx +  kx) * Nn + n ) * Ni + i;
+
                                                 int nIdx = ( (ky+y) * Ax + (kx+x) ) * Ni +  i;
+                                                printf("sum[%d] += synapse[%d][%d][%d][%d] * neuron[%d][%d][%d]\n", n, ky, kx, n, i, ky+y, kx+x, i);
+
+                                                if (synapse[sIdx] == 0){
+                                                    zeroCount++;
+
+                                                    int nextIdx = sIdx + 0;
+                                                }
+
+
+
+                                                //printf("synapse %d = %f\n", sIdx, synapse[sIdx]);
+                                                
                                                 sum[n] += synapse[sIdx] * neuron[nIdx];
                                                 
                                                 count++;
@@ -126,7 +147,8 @@ int main(int argc, char** argv){
             }
         }
     }
-    printf("number of multiplications: %d\n", count);
+    printf("number of multiplications:  %d\n", count);
+    printf("number of zero weights:     %d\n", zeroCount);
     for (int x = 0; x < Nxout; x++){
         for (int y = 0; y < Nyout; y++){
             printf("(%d,%d):", x, y);
