@@ -1,0 +1,12 @@
+#define data_c 3
+#define data_h 11
+#define data_n 1
+#define kernel_size 11
+#define stride 4
+#define weight_n 96
+#define PAD 0
+#define Ti 1
+#define Tn 1
+#define Tnn 1
+#define Tx stride
+#define Ty stride
