@@ -1,37 +1,35 @@
 Right now the simulator hierarchy looks like:
 
 dnn_sim
-  dram_interface
-  control_processor
-  datapath
+dram_interface
+control_processor
+datapath
     buffers
     NFU pipeline
 
 high level operation:
-    control processor:
-        preloads data from queued instructions until buffer is full
-            can look multiple insturctions in the future
-        issues pipe_ops if there is space in the pipeline
-        pipe_ops will poll buffers for the data to be ready
+control processor:
+    preloads data from queued instructions until buffer is full
+    can look multiple insturctions in the future
+    issues pipe_ops if there is space in the pipeline
+    pipe_ops will poll buffers for the data to be ready
 
 the control processor has pointers to datapath and dram_interface which it can use to micromanage them (everything is public)
-  we can convert this to a proper interface later
+    we can convert this to a proper interface later
 
-the control processor will also take care of the DMA actions
-the control processor issues pipe_ops to the datapath when their data has been loaded to memory
+    the control processor will also take care of the DMA actions
+    the control processor issues pipe_ops to the datapath when their data has been loaded to memory
 once all pipe_ops have been issued (queued) then start the next instruction (keep trying to load SB until there is space)
 
-what about NBout?
-    
-
-    
-
-
-BUGS:
+    BUGS:
     pipe_op 16 gets stuck in pipe_reg[0]
     pipe_op 8 gets stuck at the end of NFU3
 
-TODO:
+    TODO:
+
+    NBout
+        needs to know if an entry is done (ready to be written to DRAM)
+        control proc can poll this and perform the store
 
     sram needs to be redesigned
         include DMA in sram (or let control proc do this)
@@ -40,8 +38,8 @@ TODO:
         pipe_ops will cause lines to be ejected 
         pipe_ops know which entry to read
 
+    control processor looks ahead in the instruction queue and preloads into SB/NBin when the corresponding entry is free
 
-  centralize stat collection?
-  simple memory model
-  DRAMsim?
-  create proper interface for datapath
+
+    centralize stat collection?
+    create proper interface for datapath

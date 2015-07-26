@@ -54,15 +54,17 @@ int main(int argc, char** argv){
         neuron[i] = 1;
     }
 
-    read_filters("input/conv1-filters-8bit.csv", synapse, synapseSize);
+    read_filters(FILTER_FILE, synapse, synapseSize);
 
+    int count = 0;
+
+    int yout = 0;
     for (int yy = 0; yy <= Ax-Ky; yy += Ty) { // tile x
+        int xout = 0;
         for (int xx = 0; xx <= Ay-Kx; xx += Tx) { // tile y
             for (int nnn = 0; nnn < Nn; nnn += Tnn) { // tile n
 
-                int yout = 0;
                 for (int y = yy; y < yy + Ty; y += sy) { // slide window in y
-                    int xout = 0;
                     for (int x = xx; x < xx + Tx; x += sx) { // slide window in x
                         for (int nn = nnn; nn < nnn + Tnn; nn += Tn) { // tile for output buffer
 
@@ -70,20 +72,27 @@ int main(int argc, char** argv){
                             for (int n = nn; n < nn + Tn; n++) {
                                 sum[n] = 0;
                             }
-
+                            
+                            int rowCounter = 0;
                             for (int ky = 0; ky < Ky; ky++){ // y position in window
                                 for (int kx = 0; kx < Kx; kx++){ // x position in window
                                     for (int ii = 0; ii < Ni; ii += Ti){
+                                        
+                                        int rowIdx = (ky * Kx + kx) * Ni + ii;
+                                        printf ("rowIdx=%d\n", rowIdx);
+                                        
 
                                         // These loops happen in parallel in one pipe_op:
-                                        for (int n = nn; n < nn + Tn; n++){
-                                            for (int i = ii; i < ii + Ti; i++){
+                                        for (int n = nn; (n < nn + Tn) && (n < Nn); n++){
+                                            for (int i = ii; (i < ii + Ti) && (i < Ni); i++){
                                                 // version with shared kernels
 
                                                 //sum[n] += synapse[ky][kx][n][i] * neuron[ky + y][kx + x][i];
                                                 int sIdx = ( (ky*Kx +  kx) * Nn + n ) * Ni + i;
                                                 int nIdx = ( (ky+y) * Ax + (kx+x) ) * Ni +  i;
                                                 sum[n] += synapse[sIdx] * neuron[nIdx];
+                                                
+                                                count++;
 
                                                 // check for NaN
                                                 if (isnan(synapse[sIdx])){
@@ -103,13 +112,11 @@ int main(int argc, char** argv){
                                     }
                                 }
                             }
-                            for (int n = nn; n < nn + Tn; n++){
+                            for (int n = nn; (n < nn + Tn) && (n < Nn); n++){
                                 //neuron_out[yout][xout][n] = sum[n];
                                 int idx = (yout * Nxout + xout) * No + n;
-                                //printf ("idx = %d\n", idx);
-
-                                //neuron_out[ (( (yy * Nxin + xx )*Nn + nnn) * yout * Nxout + xout) * No + n ] = sum[n];
                                 neuron_out[idx] = sum[n];
+                                //printf ("idx = %d\n", idx);
                             }
                         }
                     } 
@@ -119,6 +126,7 @@ int main(int argc, char** argv){
             }
         }
     }
+    printf("number of multiplications: %d\n", count);
     for (int x = 0; x < Nxout; x++){
         for (int y = 0; y < Nyout; y++){
             printf("(%d,%d):", x, y);
