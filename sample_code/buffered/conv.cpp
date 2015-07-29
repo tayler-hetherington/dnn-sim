@@ -77,6 +77,8 @@ int main(int argc, char** argv){
     int read = read_filters(FILTER_FILE, synapse, synapseSize);
     if (DEBUG) printf("read %d/%d filters\n", read, synapseSize);
 
+    if (DEBUG) printf("Index order: synapse[ky][kx][filter ID][i], neuron[y][x][i]\n");
+
     int cycle = 0;
 
     int yout = 0;
