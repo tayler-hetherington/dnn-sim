@@ -1,4 +1,4 @@
-#define FILTER_FILE "input/conv1-filters-8bit.csv"
+#define FILTER_FILE "../input/conv1-filters-8bit.csv"
 #define data_c 3
 #define data_h 11
 #define data_n 1

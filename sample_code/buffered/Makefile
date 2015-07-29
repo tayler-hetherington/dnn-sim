@@ -11,7 +11,7 @@ all: $(EXES)
 $(LAYER): $(TYPE).cpp $(LAYER).h
 		$(CC) -o $@ $(filter %.cpp, $^) $(CFLAGS)
 
-conv: conv.cpp config.h 
+conv: conv.cpp  
 		$(CC) -o $@ $(filter %.cpp, $^) $(CFLAGS)
 
 clean:

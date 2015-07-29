@@ -1,3 +1,5 @@
+// This is the original pseudocode provided in the DianNao paper
+
 #include <stdio.h>
 
 #include "config.h"
