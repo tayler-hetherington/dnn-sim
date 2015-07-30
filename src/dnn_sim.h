@@ -17,6 +17,7 @@
 #include "dram_interface.h"
 #include "control_processor.h"
 #include "datapath.h"
+#include "power_model.h"
 #include "cp_inst.h"
 
 class dnn_sim {
@@ -46,6 +47,7 @@ private:
     dram_interface *m_dram_interface;
     control_processor *m_control_processor;
     datapath *m_datapath;
+    power_model *m_power_model;
 
     // Stats
     unsigned long long m_sim_cycle;

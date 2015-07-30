@@ -100,4 +100,34 @@ void dnn_config::reg_options(option_parser_t opp){
     option_parser_register(opp, "-num_outputs", OPT_INT32, &num_outputs,
                            "Number of output feature maps (default = 256)",
                            "256");
+
+    option_parser_register(opp, "-sb_acc_eng", OPT_FLOAT, &sb_acc_eng,
+                           "SB access energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-nbin_acc_eng", OPT_FLOAT, &nbin_acc_eng,
+                           "NBin access energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-nbout_acc_eng", OPT_FLOAT, &nbout_acc_eng,
+                           "NBout access energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-int_mult_16_eng", OPT_FLOAT, &int_mult_16_eng,
+                           "16-bit integer multiply energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-fp_mult_16_eng", OPT_FLOAT, &fp_mult_16_eng,
+                           "16-bit floating-point multiply energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-int_add_16_eng", OPT_FLOAT, &int_add_16_eng,
+                           "16-bit integer add energy (default = 0)",
+                           "0");
+
+    option_parser_register(opp, "-fp_add_16_eng", OPT_FLOAT, &fp_add_16_eng,
+                           "16-bit floating-point add energy (default = 0)",
+                           "0");
+
+
 }
