@@ -44,6 +44,18 @@ enum pipeline_stage {
 };
 
 
+enum power_hw_comps{
+    SB_P = 0,
+    NB_IN_P,
+    NB_OUT_P,
+    INT_MULT_16_P,
+    FP_MULT_16_P,
+    INT_ADD_16_P,
+    FP_ADD_16_P,
+    NUM_HW_COMPS
+};
+
+
 typedef uint64_t mem_addr;
 
 enum mem_access_type {

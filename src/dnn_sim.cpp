@@ -28,6 +28,8 @@ dnn_sim::dnn_sim(dnn_config *config) : m_config(config){
 
     m_control_processor = new control_processor(m_config, m_datapath, m_dram_interface);
 
+    m_power_model = new power_model(m_config);
+
     // Stats
     m_sim_cycle = 0;
     

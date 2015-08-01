@@ -54,6 +54,20 @@ public:
     // N_o need to change for each layer
     // this probably shouldn't be a parameter but I don't know how you can infer it from the instructions
     unsigned num_outputs;
+
+
+    // Simple power model (factor in pJ)
+    // SRAM Arrays
+    float sb_acc_eng;
+    float nbin_acc_eng;
+    float nbout_acc_eng;
+
+    // Functional units
+    float int_mult_16_eng;
+    float fp_mult_16_eng;
+    float int_add_16_eng;
+    float fp_add_16_eng;
+
 };
 
 #endif
