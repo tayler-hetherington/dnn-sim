@@ -140,8 +140,8 @@ def process_weights(weights, lookaside, lookahead):
 
     # print weights.any(axis=(1,2)) # print out false if a row is all zero
 
-    weights = weights[weights.any(axis=(1,2)),:,:]
     ind = ind[weights.any(axis=(1,2)),:,:]
+    weights = weights[weights.any(axis=(1,2)),:,:]
 
     return (R-zero_rows,ind,weights)
 
