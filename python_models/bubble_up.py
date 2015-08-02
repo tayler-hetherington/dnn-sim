@@ -94,6 +94,7 @@ def process_weights(weights, lookaside, lookahead):
 
         # check for all zeros
         if (is_zero( weights[r,:,:] ) ):
+            # print r # print all lines that are all zeroes
             zero_rows += 1
             continue
 
@@ -137,8 +138,7 @@ def process_weights(weights, lookaside, lookahead):
 
     print "row reduction = ", R-zero_rows , "/", R
 
-    # print out which false if a row is all zero
-    # print weights.any(axis=(1,2))
+    # print weights.any(axis=(1,2)) # print out false if a row is all zero
 
     weights = weights[weights.any(axis=(1,2)),:,:]
     ind = ind[weights.any(axis=(1,2)),:,:]
@@ -163,7 +163,6 @@ def main():
     print "processing each chunk"
     for c in chunks:
         process_weights(c, lookaside, lookahead)
-        sys.exit()
 
 if __name__ == "__main__":
     main()
