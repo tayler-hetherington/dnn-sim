@@ -80,6 +80,8 @@ def process_weights(weights, lookaside, lookahead):
     zero_rows = 0;
 
     (R,Tn,Ti) = weights.shape
+    ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
+
     print "R=",R
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
@@ -114,6 +116,8 @@ def process_weights(weights, lookaside, lookahead):
                                 # found a replacement
                                 weights[r,n,i] = weights[rr,n,ri]
                                 weights[rr,n,ri] = zero()
+                                ind[r,n,i] = ind[rr,n,ri]
+                                ind[rr,n,i] = -1
                                 found = 1
                             if (found):
                                 break
@@ -127,7 +131,19 @@ def process_weights(weights, lookaside, lookahead):
     # print_filter(weights,n)
     # print_weights(weights)
 
+    # check if the last row is zero
+    if (is_zero( weights[R-1,:,:] ) ):
+        zero_rows += 1
+
     print "row reduction = ", R-zero_rows , "/", R
+
+    # print out which false if a row is all zero
+    # print weights.any(axis=(1,2))
+
+    weights = weights[weights.any(axis=(1,2)),:,:]
+    ind = ind[weights.any(axis=(1,2)),:,:]
+
+    return (R-zero_rows,ind,weights)
 
 ######### MAIN ################################################################
 
@@ -147,6 +163,7 @@ def main():
     print "processing each chunk"
     for c in chunks:
         process_weights(c, lookaside, lookahead)
+        sys.exit()
 
 if __name__ == "__main__":
     main()
