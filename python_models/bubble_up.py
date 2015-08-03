@@ -9,6 +9,10 @@ import math
 import read_filters
 import chunk
 
+##### Globals #################################################################
+total_reduced_rows = 0
+total_rows = 0
+
 def printn (str):
     sys.stdout.write(str)
 
@@ -80,7 +84,6 @@ def process_weights(weights, lookaside, lookahead):
     zero_rows = 0;
 
     (R,Tn,Ti) = weights.shape
-    print "R=",R
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
     #    print "N:", weights[r+1,n,:]
@@ -127,26 +130,35 @@ def process_weights(weights, lookaside, lookahead):
     # print_filter(weights,n)
     # print_weights(weights)
 
-    print "row reduction = ", R-zero_rows , "/", R
+    # print "row reduction = ", R-zero_rows , "/", R
+    global total_reduced_rows 
+    total_reduced_rows += R - zero_rows
+    global total_rows 
+    total_rows += R
 
 ######### MAIN ################################################################
 
 def main():
-    script, filename, lookaside= sys.argv
+    script, filename, lookaside, lookahead = sys.argv
     lookaside = int(lookaside)
-    lookahead = 3
+    lookahead = int(lookahead)
 
-    print "read filter file"
+    # print "read filter file"
     # w is an Nn x Ni ndarray of weights
     w = read_filters.read_filters(filename)
 
-    print "break into chunks"
+    # print "break into chunks"
     # chunks is a list of Nrows * Tn * Ti weights
     chunks = chunk.chunk(w)
 
-    print "processing each chunk"
+    # print "processing each chunk"
     for c in chunks:
         process_weights(c, lookaside, lookahead)
+
+    # print "cycles = ", float(total_reduced_rows)/total_rows
+    cols = (filename, lookaside, lookahead, total_reduced_rows, total_rows)
+    for c in cols:
+        print str(c) +",",
 
 if __name__ == "__main__":
     main()
