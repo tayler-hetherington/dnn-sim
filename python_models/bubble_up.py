@@ -84,7 +84,10 @@ def process_weights(weights, lookaside, lookahead):
     zero_rows = 0;
 
     (R,Tn,Ti) = weights.shape
-    for r in range(0,R-1):
+    ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
+
+    # iterate to the end to detect zero row 
+    for r in range(0,R):
     #    print "C:", weights[r,n,:]
     #    print "N:", weights[r+1,n,:]
         rmax = min(r + lookahead , R-1 )
@@ -95,6 +98,7 @@ def process_weights(weights, lookaside, lookahead):
 
         # check for all zeros
         if (is_zero( weights[r,:,:] ) ):
+            # print r # print all lines that are all zeroes
             zero_rows += 1
             continue
 
@@ -105,18 +109,24 @@ def process_weights(weights, lookaside, lookahead):
                 if (is_zero( weights[r,n,i] )):
                     # found a zero to fill, look for replacement
 
-                    imin = max(0,i-lookaside)
-                    imax = min(15,i+lookaside)
-                    found = 0
+                    found = 0 # found replacement
 
                     # lookaside
-                    for ri in range( imin, imax + 1 ):
+                    for l in range( 0, lookaside+1 ):
+                        # search in this order: d = 0, -1, +1, -2, +2 ...
+                        d = (l+1)/2 
+                        if (l % 2):
+                            d *= -1
+                        ri = i + d
+                        ri = ri % 16 # wrap around
                         # lookahead
                         for rr in range( r + 1 , rmax + 1 ):
                             if (not is_zero(weights[rr,n,ri])):
                                 # found a replacement
                                 weights[r,n,i] = weights[rr,n,ri]
                                 weights[rr,n,ri] = zero()
+                                ind[r,n,i] = ind[rr,n,ri]
+                                ind[rr,n,i] = -1
                                 found = 1
                             if (found):
                                 break
@@ -135,6 +145,13 @@ def process_weights(weights, lookaside, lookahead):
     total_reduced_rows += R - zero_rows
     global total_rows 
     total_rows += R
+
+    # print weights.any(axis=(1,2)) # print out false if a row is all zero
+
+    ind = ind[weights.any(axis=(1,2)),:,:]
+    weights = weights[weights.any(axis=(1,2)),:,:]
+
+    return (R-zero_rows,ind,weights)
 
 ######### MAIN ################################################################
 
