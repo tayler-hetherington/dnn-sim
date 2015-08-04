@@ -8,6 +8,7 @@ import math
 
 import read_filters
 import chunk
+import look_for_replacement as re
 
 ##### Globals #################################################################
 total_reduced_rows = 0
@@ -108,31 +109,9 @@ def process_weights(weights, lookaside, lookahead):
 
                 if (is_zero( weights[r,n,i] )):
                     # found a zero to fill, look for replacement
-
-                    found = 0 # found replacement
-
-                    # lookaside
-                    for l in range( 0, lookaside+1 ):
-                        # search in this order: d = 0, -1, +1, -2, +2 ...
-                        d = (l+1)/2 
-                        if (l % 2):
-                            d *= -1
-                        ri = i + d
-                        ri = ri % 16 # wrap around
-                        # lookahead
-                        for rr in range( r + 1 , rmax + 1 ):
-                            if (not is_zero(weights[rr,n,ri])):
-                                # found a replacement
-                                weights[r,n,i] = weights[rr,n,ri]
-                                weights[rr,n,ri] = zero()
-                                ind[r,n,i] = ind[rr,n,ri]
-                                ind[rr,n,i] = -1
-                                found = 1
-                            if (found):
-                                break
-                        if (found):
-                            break
-                                
+                    weights, ind, _ = re.look_for_replacement(r,n,i,weights,ind,
+                                                 lookaside,lookahead)
+                    
         # print "--------------------------------"
         # for tr in range(r, rmax + 1):
             # print_row(weights,tr)
