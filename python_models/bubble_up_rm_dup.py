@@ -11,6 +11,9 @@ import chunk
 
 import look_for_replacement as re
 
+total_reduced_rows = 0
+total_rows = 0
+
 def printn (str):
     sys.stdout.write(str)
 
@@ -222,7 +225,7 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
     dup_bubble = 0
     dup_bubble_pop = 0
 
-    print "R=",R
+    #print "R=",R
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
     #    print "N:", weights[r+1,n,:]
@@ -266,10 +269,10 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
                 ictr += stat[3]
                 octr += stat[4]
 
-        out_per_row[octr/max(1,out_limit)] += 1
-        in_per_row[ictr/max(1,in_limit)] += 1
-        out_res_per_row[ores/max(1,out_limit)] += 1
-        in_res_per_row[ires/max(1,in_limit)/Tn] += 1
+        #out_per_row[octr/max(1,out_limit)] += 1
+        #in_per_row[ictr/max(1,in_limit)] += 1
+        #out_res_per_row[ores/max(1,out_limit)] += 1
+        #in_res_per_row[ires/max(1,in_limit)/Tn] += 1
 
         # print "--------------------------------"
         # for tr in range(r, rmax + 1):
@@ -282,12 +285,17 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
     if (is_zero( weights[R-1,:,:] ) ):
         zero_rows += 1
 
-    print "row reduction = ", R-zero_rows , "/", R
-    print "Output Counter: ", out_per_row
-    print "Input Counter: ", in_per_row
-    print "Output Res: ", out_res_per_row
-    print "Input Res: ", in_res_per_row
+    #print "row reduction = ", R-zero_rows , "/", R
+    #print "Output Counter: ", out_per_row
+    #print "Input Counter: ", in_per_row
+    #print "Output Res: ", out_res_per_row
+    #print "Input Res: ", in_res_per_row
     print "Bubble/Dup/B+D/B+D+P: ", (zero_rm, dup_rm, dup_bubble, dup_bubble_pop)
+
+    global total_reduced_rows 
+    total_reduced_rows += R - zero_rows
+    global total_rows 
+    total_rows += R
 
     # print weights.any(axis=(1,2)) # print out false if a row is all zero
 
@@ -306,19 +314,23 @@ def main():
     out_limit = int(out_limit)
     in_limit = int(in_limit)
 
-    print "read filter file"
+    #print "read filter file"
     # w is an Nn x Ni ndarray of weights
     w = read_filters.read_filters(filename)
 
-    print "break into chunks"
+    #print "break into chunks"
     # chunks is a list of Nrows * Tn * Ti weights
     chunks = chunk.chunk(w)
 
-    print "processing each chunk"
+    #print "processing each chunk"
     np.set_printoptions(threshold=np.inf)
     for c in chunks:
         process_weights(c, lookaside, lookahead, out_limit, in_limit)
         #sys.exit()
+
+    cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+    for c in cols:
+        print str(c) +",",
 
 if __name__ == "__main__":
     main()
