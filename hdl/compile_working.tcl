@@ -19,7 +19,7 @@ set my_toplevel top_pipeline
 set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization       */
-set my_clk_freq_MHz 100
+set my_clk_freq_MHz 200
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 set my_input_delay_ns 0.1
@@ -58,33 +58,38 @@ current_design $my_toplevel
 link
 uniquify
 
-#set my_period [expr 1000 / $my_clk_freq_MHz]
+set my_period [expr 1000 / $my_clk_freq_MHz]
 
-#set find_clock [ find port [list $my_clock_pin] ]
-#if {  $find_clock != [list] } {
-#   set clk_name $my_clock_pin
-#   create_clock -period $my_period $clk_name
-#} else {
-#   set clk_name vclk
-#   create_clock -period $my_period -name $clk_name
-#}
+set find_clock [ find port [list $my_clock_pin] ]
+if {  $find_clock != [list] } {
+   set clk_name $my_clock_pin
+   create_clock -period $my_period $clk_name
+} else {
+   set clk_name vclk
+   create_clock -period $my_period -name $clk_name
+}
 
-#create_clock -period 100 -name "clk"
-###### AYUB #######
+set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_inputs
+set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_synapses
+set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_nbout_to_nfu2
+
+
+
 #set_driving_cell  -lib_cell INVX1  [all_inputs]
 #set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 in_colors
 #set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 din_0
 #set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 sel
 
-
+#set_switching_activity "" "" -base_clock $my_clock_pin signal
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 2 data_in
 #set_switching_activity -static_probability 0 rst
 #set_switching_activity -static_probability 0 new_frame
 #set_input_delay $my_input_delay_ns -reference_pin clk [remove_from_collection [all_inputs] clk]
 #set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
 
+compile_ultra
 #compile_ultra -no_autoungroup
-compile -power_effort high
+#compile -power_effort high
 #-map_effort medium 
 #compile -ungroup_all -map_effort medium
 
