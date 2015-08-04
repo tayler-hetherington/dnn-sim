@@ -9,6 +9,8 @@ import math
 import read_filters
 import chunk
 
+import look_for_replacement as re
+
 def printn (str):
     sys.stdout.write(str)
 
@@ -73,9 +75,9 @@ def look_for_replacement(r, n, i, weights, ind, lookaside, lookahead):
                 weights[rr,n,ri] = zero()
                 ind[r,n,i] = ind[rr,n,ri]
                 ind[rr,n,ri] = -3
-                return (weights, ind)
+                return (weights, ind, 1)
 
-    return (weights, ind)
+    return (weights, ind, 0)
 
 def look_for_duplicates(r, n, i, weights, ind, lookahead):
 
@@ -114,8 +116,76 @@ def look_for_duplicates(r, n, i, weights, ind, lookahead):
     return dup_index
 
 
+def remove_duplicates(r, n, i, weights, ind,
+                      out_ctr, in_ctr, lookaside, lookahead, base_n):
 
-def process_weights(weights, lookaside, lookahead):
+    dup_rm = 0
+    dup_bubble = 0
+    dup_bubble_pop = 0
+    ictr = 0
+    octr = 0
+
+    stat = [dup_rm, dup_bubble, dup_bubble_pop, ictr, octr]
+
+    # reached output limit for this cycle
+    # or can't fill in the bubble
+    if (not out_ctr[n]):
+       return (weights, ind, out_ctr, in_ctr, stat)
+
+    if (is_zero( weights[r,n,i] )):
+       return (weights, ind, out_ctr, in_ctr, stat)
+
+    # get dimensions 
+    (R,Tn,Ti) = weights.shape
+
+    # look for duplicates of this value
+    dup_index = look_for_duplicates(r, n, i, weights, ind, lookahead)
+
+    # go through each of them and see if they will accept inputs 
+    output_dup = False
+    for dup in dup_index:
+        (dr,dn,di) = dup
+
+        # reached input limit
+        if (in_ctr[dn] == 0):
+           continue
+
+        #print "Du: ", (r,n,i,weights[r,n,i]), (dr,dn,di,weights[dr,dn,di]) 
+        weights[dr,dn,di] = zero()
+        ind[dr,dn,di] = -2
+        output_dup = True
+        in_ctr[dn] -= 1
+        ictr += 1
+        dup_rm += 1
+
+        # fill in the bubble if they are on the same row
+        # this loop already passed it
+        if (dr == r and dn < base_n):
+           (weights, ind, tmp) = look_for_replacement(
+                       dr, dn, di, weights, ind, lookaside, lookahead)
+           dup_bubble += 1
+           dup_bubble_pop += tmp
+
+           if (tmp):
+              (weights, ind, out_ctr, in_ctr, stat) = remove_duplicates(r, n, i,
+               weights, ind, out_ctr, in_ctr, lookaside, lookahead, base_n)
+              dup_rm += stat[0]
+              dup_bubble += stat[1]
+              dup_bubble_pop += stat[2]
+              ictr += stat[3]
+              octr += stat[4]
+     
+
+    if (output_dup):
+       out_ctr[n] -= 1
+       octr += 1
+
+    stat = [dup_rm, dup_bubble, dup_bubble_pop, ictr, octr]
+
+    return (weights, ind, out_ctr, in_ctr, stat)
+
+
+def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
 
     # gather stats about data
     # ones = np.count_nonzero(weights.count('1'))
@@ -138,11 +208,19 @@ def process_weights(weights, lookaside, lookahead):
     # print_filter(weights,n)
 
     zero_rows = 0;
-    out_limit = 1;
-    in_limit = 1;
 
     (R,Tn,Ti) = weights.shape
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
+
+    out_per_row = [0] * (Ti+1)
+    in_per_row = [0] * (Tn+1)
+    out_res_per_row = [0] * (Ti+1)
+    in_res_per_row = [0] * (Tn+1)
+
+    zero_rm = 0
+    dup_rm = 0
+    dup_bubble = 0
+    dup_bubble_pop = 0
 
     print "R=",R
     for r in range(0,R-1):
@@ -163,6 +241,10 @@ def process_weights(weights, lookaside, lookahead):
         # counter for the limits
         in_ctr = [in_limit] * Tn
         out_ctr = [out_limit] * Ti
+        ictr = 0
+        octr = 0
+        ires = 0
+        ores = 0
 
         # fill bubbles
         for n in range(0,Tn):
@@ -171,55 +253,41 @@ def process_weights(weights, lookaside, lookahead):
                 # fill in the bubble
                 if (is_zero( weights[r,n,i] )):
                     # found a zero to fill, look for replacement
-                    (weights, ind) = look_for_replacement(
+                    (weights, ind, tmp) = re.look_for_replacement(
                                 r, n, i, weights, ind, lookaside, lookahead)
+                    zero_rm += tmp
 
-                # reached output limit for this cycle
-                # or can't fill in the bubble
-                if (not out_ctr[n] or is_zero( weights[r,n,i] )):
-                   continue
+                (weights, ind, out_ctr, in_ctr, stat) = remove_duplicates(r, n, i,
+                      weights, ind, out_ctr, in_ctr,  lookaside, lookahead, n)
 
-                #print (r,n,i), ": ", (ind[r,n,i],weights[r,n,i])
+                dup_rm += stat[0]
+                dup_bubble += stat[1]
+                dup_bubble_pop += stat[2]
+                ictr += stat[3]
+                octr += stat[4]
 
-                # look for duplicates of this value
-                dup_index = look_for_duplicates(r, n, i, weights, ind, lookahead)
+        out_per_row[octr/max(1,out_limit)] += 1
+        in_per_row[ictr/max(1,in_limit)] += 1
+        out_res_per_row[ores/max(1,out_limit)] += 1
+        in_res_per_row[ires/max(1,in_limit)/Tn] += 1
 
-                # go through each of them and see if they will accept inputs 
-                output_dup = False
-                for dup in dup_index:
-                    (dr,dn,di) = dup
-
-                    # reached intput limit
-                    if (not in_ctr[dn]):
-                       continue
-
-                    #print "Du: ", (ind[r,n,i],weights[r,n,i]), (ind[dr,dn,di],weights[dr,dn,di]) 
-                    weights[dr,dn,di] = zero()
-                    ind[dr,dn,di] = -2
-                    output_dup = True
-                    in_ctr[dn] += 1
-
-                    # fill in the bubble if they are on the same row
-                    # this loop already passed it
-                    if (dr == r and dn < n):
-                       (weights, ind) = look_for_replacement(
-                                   dr, dn, di, weights, ind, lookaside, lookahead)
-
-                if (output_dup):
-                   out_ctr[n] += 1
-                           
         # print "--------------------------------"
         # for tr in range(r, rmax + 1):
             # print_row(weights,tr)
 
     # print_filter(weights,n)
-    # print_weights(weights)
+    #print_weights(weights)
 
     # check if the last row is zero
     if (is_zero( weights[R-1,:,:] ) ):
         zero_rows += 1
 
     print "row reduction = ", R-zero_rows , "/", R
+    print "Output Counter: ", out_per_row
+    print "Input Counter: ", in_per_row
+    print "Output Res: ", out_res_per_row
+    print "Input Res: ", in_res_per_row
+    print "Bubble/Dup/B+D/B+D+P: ", (zero_rm, dup_rm, dup_bubble, dup_bubble_pop)
 
     # print weights.any(axis=(1,2)) # print out false if a row is all zero
 
@@ -232,9 +300,11 @@ def process_weights(weights, lookaside, lookahead):
 ######### MAIN ################################################################
 
 def main():
-    script, filename, lookaside= sys.argv
+    script, filename, lookaside, lookahead, out_limit, in_limit = sys.argv
     lookaside = int(lookaside)
-    lookahead = 3
+    lookahead = int(lookahead)
+    out_limit = int(out_limit)
+    in_limit = int(in_limit)
 
     print "read filter file"
     # w is an Nn x Ni ndarray of weights
@@ -245,8 +315,9 @@ def main():
     chunks = chunk.chunk(w)
 
     print "processing each chunk"
+    np.set_printoptions(threshold=np.inf)
     for c in chunks:
-        process_weights(c, lookaside, lookahead)
+        process_weights(c, lookaside, lookahead, out_limit, in_limit)
         #sys.exit()
 
 if __name__ == "__main__":
