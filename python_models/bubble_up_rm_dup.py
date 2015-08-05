@@ -298,10 +298,10 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
     total_rows += R
 
     # print weights.any(axis=(1,2)) # print out false if a row is all zero
+    wa = [weights[i,:,:].any() for i in range(weights.shape[0])] # changed for 1.6.1 compatilibility
 
-    # remove zero rows
-    ind = ind[weights.any(axis=(1,2)),:,:]
-    weights = weights[weights.any(axis=(1,2)),:,:]
+    ind = ind[wa,:,:]
+    weights = weights[wa,:,:]
 
     return (R-zero_rows,ind,weights)
 
