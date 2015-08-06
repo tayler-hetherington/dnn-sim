@@ -61,7 +61,7 @@ Should_Transfer_Files = no
 #When_To_Transfer_Output = ON_EXIT
 END_MSG
 
-print $fh "request_memory = 1024\n";
+print $fh "request_memory = 2048\n";
 close $fh;
 
 die "$resultDir does not exist\n" if ( ! -d $resultDir );
@@ -91,7 +91,7 @@ if ($rerun) {
 my_system("cp batch-job.submit $batchDir/.skel/.") ;
 
 print "running for everything in $filterDir\n";
-@filters = `ls $filterDir`;
+@filters = `cat nets.txt`;
 chomp(@filters);
 
 print "Preparing $batchDir\n" unless $rerun;
@@ -110,14 +110,12 @@ for my $lah (1..2){
         my_system("mkdir $configDir") unless $rerun;
 
         for my $filter (@filters){
-            next unless $filter =~ m/\.csv/;
+            #next unless $filter =~ m/\.csv/;
 
             ( my $filterName = $filter )=~ s/\.[^.]+$//;
             my $runDir = "$configDir/$filterName";
             if ($rerun and -d $runDir) {
-                # test if run succeeded
-                # if exists and non empty
-                if ( -s "$runDir/stdout" and -f "$runDir/stdout" ){
+                if (system("grep \"job completed sucessfully\" stdout") == 0)
                     next; # if so, skip
                 } else {
                     print "Rerunning $runDir\n";
@@ -128,9 +126,11 @@ for my $lah (1..2){
                 for $py (glob "$batchDir/.skel/*.py"){
                     my_system("ln -s $py $runDir/" . basename($py));
                 }
+                my_system("ln -s $runDir/$script $runDir/script");
+                my_system("echo $filterDir/$filter*.csv > $runDir/filters.txt");
             }
 
-            $args = "$batchDir/.skel/bubble_up.py $filterDir/$filter $lah $las";
+            $args = "$lah $las";
             my_system("echo \"$args\" > $runDir/args"); 
 
             # append job details to submit script
