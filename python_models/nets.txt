@@ -1,0 +1,17 @@
+VGG19layers_conv1
+VGG19layers_conv2
+VGG19layers_conv3
+VGG19layers_conv4
+VGG19layers_conv5
+googlenet_conv
+googlenet_inception_3
+googlenet_inception_4
+googlenet_inception_5
+CNN_M_2048
+CNN_S
+alexnet
+caffenet
+flickr
+hybridCNN
+placesCNN
+rcnn
