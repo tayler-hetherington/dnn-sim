@@ -29,7 +29,7 @@ def read_filters(filename):
                 entries = line.split(',')
                 for e in entries:
                     if (is_number(e)):
-                        filt.append(e)
+                        filt.append(float(e))
         else:
             # blank line: 
             if (len(filt)):
@@ -42,6 +42,7 @@ def read_filters(filename):
 
     Nn = len(filter_list)
     Ni = len(filter_list[0])
+
 
     weights = np.array(filter_list)
     return weights

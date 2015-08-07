@@ -13,6 +13,7 @@ def chunk(weights):
     Nn, Ni = weights.shape
 
     chunks = []
+    chunk_idx = []
 
     for nnn in range(0, Nn, Tnn):
         for iii in range(0, Ni, Tii):
@@ -36,4 +37,5 @@ def chunk(weights):
                             chunk[r,cn,ci] = weights[n,i]
 
                 chunks.append(chunk)
-    return chunks
+                chunk_idx.append((nn,iii))
+    return (chunks, chunk_idx)

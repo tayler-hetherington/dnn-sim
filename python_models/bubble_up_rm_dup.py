@@ -14,6 +14,14 @@ import look_for_replacement as re
 total_reduced_rows = 0
 total_rows = 0
 
+def interact():
+    import code
+    code.InteractiveConsole(locals=globals()).interact()
+
+def debug():
+    import pdb
+    pdb.set_trace()
+
 def printn (str):
     sys.stdout.write(str)
 
@@ -87,6 +95,8 @@ def map_duplicates(weights, absolute=False):
 
     return dup_map              
 
+# for a given entry r,n,i scan current row and the original row
+# 
 def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
 
 
@@ -188,29 +198,11 @@ def remove_duplicates(r, n, i, weights, ind, dup_index,
     return (weights, ind, out_ctr, in_ctr, stat)
 
 
-def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
-
-    # gather stats about data
-    # ones = np.count_nonzero(weights.count('1'))
-    # print "ones  = ", ones
-    # zeros = np.count_nonzero(weights.count('0')) 
-    # print "zeros = ", zeros
-    # percent = (ones + 0.0)/(ones+zeros)
-    # print "percent ones = ", percent
-    # rows = ( (ones + 0.0)/(ones+zeros) * 64 )
-    # print "rows of ones = ", rows
-
-    # for n in range(0,Tn):
-        # col = weights[:,n,:]
-        # ones = np.count_nonzero(col.count('1'))
-        # zeros = np.count_nonzero(col.count('0')) 
-        # rows = ( (ones + 0.0)/(ones+zeros) * 64 )
-        # print n, "rows of ones = ", rows
-
-    # print_weights(weights)
-    # print_filter(weights,n)
-
+def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
+    chunk_n, chunk_i = weight_idx
     zero_rows = 0;
+
+    sys.exit()
 
     (R,Tn,Ti) = weights.shape
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
@@ -221,12 +213,11 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
     out_res_per_row = [0] * (Ti+1)
     in_res_per_row = [0] * (Tn+1)
 
-    zero_rm = 0
-    dup_rm = 0
-    dup_bubble = 0
-    dup_bubble_pop = 0
+    zero_rm = 0 # number of zeros removed
+    dup_rm = 0 # number of dups removed
+    dup_bubble = 0 # ignore
+    dup_bubble_pop = 0 # ignore
 
-    #print "R=",R
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
     #    print "N:", weights[r+1,n,:]
@@ -243,12 +234,12 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
             continue
 
         # counter for the limits
-        in_ctr = [in_limit] * Tn
-        out_ctr = [out_limit] * Ti
-        ictr = 0
-        octr = 0
-        ires = 0
-        ores = 0
+        in_ctr = [in_limit] * Tn # input limit per filter (m), max inputs to adder tree
+        out_ctr = [out_limit] * Ti # number of products that can be broadcast for an input i
+        ictr = 0 # number of products reused
+        octr = 0 # number of products broadcast
+        ires = 0 # ignore
+        ores = 0 # ignore
         changed = True
         dup_found = set()
 
@@ -263,13 +254,17 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
                     # look for duplicates only if we haven't looked at it before
                     key = (ind[r,n,i][0], ind[r,n,i][2], weights[r,n,i])
                     if (key not in dup_found and not is_zero(weights[r,n,i])):
+
+                        # dup_index is list of duplicates for (r,n,i)
                         dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead)
                         dup_found.add(key)
                         if (dup_index):
                             dup_index.append((r,n,i))
                             dup_found_iter.append(dup_index)
                             #print "A ", dup_index, "W ", weights[r,n,i]
-   
+
+            # prioritize removal here
+
             # reorder the duplicate removal order
             # do the ones with more duplicates first
             dup_found_iter.sort(key=len, reverse=True)
@@ -284,16 +279,21 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
             for tmp in dup_found_iter:
                 tmp.sort(key=lambda fn: n_ctr.get(fn[1], Tn*Ti+1))
 
-            # remove duplicates 
+            # remove duplicates in list order
+            #   checking for constraints
             for dup_list in dup_found_iter:
+                # for each set of duplicates
+                # first dup that can be issued (in the current row) will be issued, rest will be removed
+
                 for index in dup_list:
 
-                    (rr,nn,ii) = index
+                    (rr,nn,ii) = index 
 
                     # only output if the index is on the current row
                     if (r != rr):
                        continue   
  
+                    # remove all other duplicates if possible
                     (weights, ind, out_ctr, in_ctr, stat) = remove_duplicates(rr, nn, ii,
                           weights, ind, dup_list, out_ctr, in_ctr, lookaside, lookahead, nn)
                     dup_rm += stat[0]
@@ -302,7 +302,7 @@ def process_weights(weights, lookaside, lookahead, out_limit, in_limit):
                     ictr += stat[3]
                     octr += stat[4]
 
-                    # exit when a remove successfully found
+                    # exit when a remove succeeded
                     if (stat[0]):
                        break;
 
@@ -370,16 +370,33 @@ def main():
     #print "read filter file"
     # w is an Nn x Ni ndarray of weights
     w = read_filters.read_filters(filename)
+    (Nn, Ni) = w.shape
+    print w.shape
+    dups = {}
+    for i in range(Ni):
+        for n in range(Nn):
+            weight = abs(w[n,i])
+            if (weight == 0):
+                continue
+            if ( not (weight,i) in dups ):
+                dups[(weight,i)] = []
+
+            dups[(weight,i)].append(n)
+    #print dups
+
+    #for key in dups:
+    #    print key, dups[key]
+    #sys.exit()
+
 
     #print "break into chunks"
     # chunks is a list of Nrows * Tn * Ti weights
-    chunks = chunk.chunk(w)
+    (chunks, chunk_idxs) = chunk.chunk(w)
 
     #print "processing each chunk"
     np.set_printoptions(threshold=np.inf)
-    for c in chunks:
-        process_weights(c, lookaside, lookahead, out_limit, in_limit)
-        #sys.exit()
+    for (c, c_idx) in zip(chunks, chunk_idxs):
+        process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
 
     cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
     for c in cols:
