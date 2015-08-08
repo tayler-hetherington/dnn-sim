@@ -198,15 +198,22 @@ def remove_duplicates(r, n, i, weights, ind, dup_index,
     return (weights, ind, out_ctr, in_ctr, stat)
 
 
+def get_global_weight_idx(chunk_n, chunk_i, r, n, i):
+    global Ti
+    ii = chunk_i + r*Ti
+    gn = chunk_n + n
+    gi = i + ii
+    return (gn,gi)
+
 def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
     chunk_n, chunk_i = weight_idx
     zero_rows = 0;
 
-    sys.exit()
+    # recalculate global index
 
     (R,Tn,Ti) = weights.shape
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
-    dup_map = map_duplicates(weights, False)
+    dup_map = map_duplicates(weights, True)
 
     out_per_row = [0] * (Ti+1)
     in_per_row = [0] * (Tn+1)
@@ -217,6 +224,33 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     dup_rm = 0 # number of dups removed
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
+
+
+    # iterate in chunk order and save duplicate values
+    global glob_dups
+    buffer = {}
+    for r in range(R):
+        for n in range(Tn):
+            for i in range(Ti):
+                w = weights[r,n,i]
+                (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
+
+                # is this a duplicate?
+                if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
+                    # is the product already in the buffer
+                    if (w,gi) in buffer:
+                        # remove current key
+                        buffer[(w,gi)].remove(gn)
+                        # have all the duplicates been forwarded?
+                        if len(buffer[(w,gi)]) == 0:
+                            # get rid of this entry in the buffer
+                            del buffer[(w,gi)]
+                    else:
+                        # add to buffer
+                        buffer[(w,gi)] = glob_dups[(w,gi)]
+                        buffer[(w,gi)].remove(gn) # remove the current entry, this calculates the product
+                        
+                    
 
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
@@ -360,48 +394,46 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
 ######### MAIN ################################################################
 
-def main():
-    script, filename, lookaside, lookahead, out_limit, in_limit = sys.argv
-    lookaside = int(lookaside)
-    lookahead = int(lookahead)
-    out_limit = int(out_limit)
-    in_limit = int(in_limit)
+script, filename, lookaside, lookahead, out_limit, in_limit = sys.argv
+lookaside = int(lookaside)
+lookahead = int(lookahead)
+out_limit = int(out_limit)
+in_limit = int(in_limit)
 
-    #print "read filter file"
-    # w is an Nn x Ni ndarray of weights
-    w = read_filters.read_filters(filename)
-    (Nn, Ni) = w.shape
-    print w.shape
-    dups = {}
-    for i in range(Ni):
-        for n in range(Nn):
-            weight = abs(w[n,i])
-            if (weight == 0):
-                continue
-            if ( not (weight,i) in dups ):
-                dups[(weight,i)] = []
+Ti=16
+Tn=16
 
-            dups[(weight,i)].append(n)
-    #print dups
+#print "read filter file"
+# w is an Nn x Ni ndarray of weights
+w = read_filters.read_filters(filename)
+(Nn, Ni) = w.shape
 
-    #for key in dups:
-    #    print key, dups[key]
-    #sys.exit()
+glob_weights = w
+glob_dups = {}
 
+for i in range(Ni):
+    for n in range(Nn):
+        weight = abs(w[n,i])
+        if (weight == 0):
+            continue
+        if ( not (weight,i) in glob_dups ):
+            glob_dups[(weight,i)] = []
 
-    #print "break into chunks"
-    # chunks is a list of Nrows * Tn * Ti weights
-    (chunks, chunk_idxs) = chunk.chunk(w)
+        glob_dups[(weight,i)].append(n)
 
-    #print "processing each chunk"
-    np.set_printoptions(threshold=np.inf)
-    for (c, c_idx) in zip(chunks, chunk_idxs):
-        process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
+#    for key in glob_dups:
+#        print key, glob_dups[key]
+#print "break into chunks"
+# chunks is a list of Nrows * Tn * Ti weights
+(chunks, chunk_idxs) = chunk.chunk(w)
 
-    cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
-    for c in cols:
-        print str(c) +",",
+#print "processing each chunk"
+np.set_printoptions(threshold=np.inf)
+for (c, c_idx) in zip(chunks, chunk_idxs):
+    process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
 
-if __name__ == "__main__":
-    main()
+cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+for c in cols:
+    print str(c) +",",
+
 
