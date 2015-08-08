@@ -209,6 +209,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     chunk_n, chunk_i = weight_idx
     zero_rows = 0;
 
+
     # recalculate global index
 
     (R,Tn,Ti) = weights.shape
@@ -228,29 +229,36 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
     # iterate in chunk order and save duplicate values
     global glob_dups
-    buffer = {}
+    global removed_dups
+    global buffer
     for r in range(R):
         for n in range(Tn):
             for i in range(Ti):
                 w = weights[r,n,i]
-                (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
+                if (w == 0):
+                    continue
 
+                (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
                 # is this a duplicate?
                 if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
                     # is the product already in the buffer
                     if (w,gi) in buffer:
                         # remove current key
                         buffer[(w,gi)].remove(gn)
+                        removed_dups += 1
                         # have all the duplicates been forwarded?
                         if len(buffer[(w,gi)]) == 0:
                             # get rid of this entry in the buffer
                             del buffer[(w,gi)]
                     else:
                         # add to buffer
-                        buffer[(w,gi)] = glob_dups[(w,gi)]
+                        buffer[(w,gi)] = list(glob_dups[(w,gi)])
                         buffer[(w,gi)].remove(gn) # remove the current entry, this calculates the product
                         
-                    
+                
+    return
+
+#################################################################################
 
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
@@ -408,9 +416,16 @@ Tn=16
 w = read_filters.read_filters(filename)
 (Nn, Ni) = w.shape
 
+print w.shape
+
 glob_weights = w
 glob_dups = {}
 
+total_dups = 0
+removed_dups = 0
+buffer = {}
+
+add = 0
 for i in range(Ni):
     for n in range(Nn):
         weight = abs(w[n,i])
@@ -418,10 +433,14 @@ for i in range(Ni):
             continue
         if ( not (weight,i) in glob_dups ):
             glob_dups[(weight,i)] = []
+        else:
+            add += 1
 
         glob_dups[(weight,i)].append(n)
 
-#    for key in glob_dups:
+for key in glob_dups:
+#    print key, len(glob_dups[key]), glob_dups[key]
+    total_dups += len(glob_dups[key])-1
 #        print key, glob_dups[key]
 #print "break into chunks"
 # chunks is a list of Nrows * Tn * Ti weights
@@ -432,7 +451,17 @@ np.set_printoptions(threshold=np.inf)
 for (c, c_idx) in zip(chunks, chunk_idxs):
     process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
 
-cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+left=0
+for key in buffer:
+    (w,i)=key
+    for n in buffer[key]:
+        #print "left ", i, n
+        left += 1
+
+#cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+#cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
+print "added removed left"
+cols = (add, removed_dups, left)
 for c in cols:
     print str(c) +",",
 
