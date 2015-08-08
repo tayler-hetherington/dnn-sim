@@ -7,7 +7,7 @@
 #/**************************************************/
 
 #/* All verilog files, separated by spaces         */
-set my_verilog_files [list ./src/fixed_point_ops/qtwosComp.v ./src/fixed_point_ops/qadd.v ./src/fixed_point_ops/qmult.v ./src/common.v ./src/nfu-1.v ./src/nfu-2.v ./src/nfu-3.v ./src/top_pipeline.v]
+set my_verilog_files [list ./src/fixed_point_ops/qtwosComp.v ./src/fixed_point_ops/qadd.v ./src/fixed_point_ops/qmult.v ./src/common.v ./src/nfu-1A.v ./src/nfu-1B.v ./src/nfu-2.v ./src/nfu-3.v ./src/top_pipeline.v]
 
 
 
@@ -18,14 +18,15 @@ set my_toplevel top_pipeline
 #/* exists, pick anything                          */
 set my_clock_pin clk
 
-#/* Target frequency in MHz for optimization       */
-set my_clk_freq_MHz 200
+#/* Target frequency in MHz for optimization */
+#/* Trying for 0.98 GHz                      */
+set my_clk_freq_MHz 980
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
-set my_input_delay_ns 0.1
+#set my_input_delay_ns 0.1
 
 #/* Reserved time for output signals (Holdtime etc.)   */
-set my_output_delay_ns 0.1
+#set my_output_delay_ns 0.1
 
 
 #/**************************************************/
@@ -42,15 +43,8 @@ set target_library "gscl45nm.db"
 
 define_design_lib WORK -path ./WORK
 
-
-#set verilogout_show_unconnected_pins "true"
-#set_ultra_optimization true
-#set_ultra_optimization -force
-
-
 analyze -format verilog $my_verilog_files
 
-#elaborate $my_toplevel -architecture RTL
 elaborate $my_toplevel
 
 current_design $my_toplevel
@@ -58,7 +52,7 @@ current_design $my_toplevel
 link
 uniquify
 
-set my_period [expr 1000 / $my_clk_freq_MHz]
+set my_period [expr 1000.0 / $my_clk_freq_MHz]
 
 set find_clock [ find port [list $my_clock_pin] ]
 if {  $find_clock != [list] } {
@@ -69,9 +63,21 @@ if {  $find_clock != [list] } {
    create_clock -period $my_period -name $clk_name
 }
 
+
 set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_inputs
 set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_synapses
-set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_nbout_to_nfu2
+set_switching_activity -static_probability 0.5 -toggle_rate 0.0078125 -base_clock $my_clock_pin i_nbout_to_nfu2
+set_switching_activity -static_probability 0.015625 -toggle_rate 0.015625 -base_clock $my_clock_pin i_load_nbout
+set_switching_activity -static_probability 0.015625 -toggle_rate 0.015625 -base_clock $my_clock_pin i_nbout_nfu2_nfu3
+
+
+puts -nonewline "Clk freq: "
+puts -nonewline $my_clk_freq_MHz
+puts " MHz"
+
+puts -nonewline "Clk period: "
+puts -nonewline $my_period
+puts " ns"
 
 
 
@@ -88,11 +94,12 @@ set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_
 #set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
 
 compile_ultra
+
+
 #compile_ultra -no_autoungroup
 #compile -power_effort high
 #-map_effort medium 
 #compile -ungroup_all -map_effort medium
-
 #compile -incremental_mapping -map_effort medium
 
 check_design

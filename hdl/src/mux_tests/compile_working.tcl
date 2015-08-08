@@ -7,8 +7,8 @@
 #/**************************************************/
 
 #/* All verilog files, separated by spaces         */
-set my_verilog_files [list mux.sv top.sv ]
-#set my_verilog_files [list mux.v top.v ]
+#set my_verilog_files [list mux.sv top.sv ]
+set my_verilog_files [list mux.v top.v ]
 
 
 
@@ -17,10 +17,10 @@ set my_toplevel top_level
 
 #/* The name of the clock pin. If no clock-pin     */
 #/* exists, pick anything                          */
-#set my_clock_pin clk
+set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization       */
-#set my_clk_freq_MHz 200
+#set my_clk_freq_MHz 100
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 #set my_input_delay_ns 0.1
@@ -49,8 +49,8 @@ define_design_lib WORK -path ./WORK
 #set_ultra_optimization -force
 
 
-analyze -format sverilog $my_verilog_files
-#analyze -format verilog $my_verilog_files
+#analyze -format sverilog $my_verilog_files
+analyze -format verilog $my_verilog_files
 
 #elaborate $my_toplevel -architecture RTL
 elaborate $my_toplevel
@@ -63,22 +63,23 @@ uniquify
 
 #set my_period [expr 1000 / $my_clk_freq_MHz]
 
-#set find_clock [ find port [list $my_clock_pin] ]
-#if {  $find_clock != [list] } {
-#   set clk_name $my_clock_pin
-#   create_clock -period $my_period $clk_name
-#} else {
-#   set clk_name vclk
-#   create_clock -period $my_period -name $clk_name
-#}
+set my_period 0.33
+set find_clock [ find port [list $my_clock_pin] ]
+if {  $find_clock != [list] } {
+   set clk_name $my_clock_pin
+   create_clock -period $my_period $clk_name
+} else {
+   set clk_name vclk
+   create_clock -period $my_period -name $clk_name
+}
 
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_inputs
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_synapses
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_nbout_to_nfu2
 
 
-set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_inputs
-set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_sel
+#set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_inputs
+#set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_sel
 
 #set_driving_cell  -lib_cell INVX1  [all_inputs]
 #set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 in_colors
@@ -89,10 +90,14 @@ set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_s
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 2 data_in
 #set_switching_activity -static_probability 0 rst
 #set_switching_activity -static_probability 0 new_frame
+
 #set_input_delay $my_input_delay_ns -reference_pin clk [remove_from_collection [all_inputs] clk]
 #set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
 
 compile_ultra
+#compile -ungroup -map_effort high -area_effort high
+
+
 #compile_ultra -no_autoungroup
 #compile -power_effort high
 #-map_effort medium 

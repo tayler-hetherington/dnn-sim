@@ -16,7 +16,6 @@
 module Tn_adder_tree (
         i_nfu1,         // New multiplication data from NFU-1
         i_nbout,        // Partial SUM from NBOut
-        i_nbout_en,     // Use i_nbout if i_nbout_en '1'
         o_results
     );
 
@@ -29,7 +28,6 @@ module Tn_adder_tree (
     //----------- Input Ports ---------------//
     input [((BIT_WIDTH*Tn) - 1):0] i_nfu1;   // Tn x Tn inputs
     input [(BIT_WIDTH - 1):0] i_nbout;     // Tn partial sums
-    input i_nbout_en;
     
     //----------- Output Ports ---------------//
     output [(BIT_WIDTH - 1):0] o_results;
@@ -37,12 +35,12 @@ module Tn_adder_tree (
     //----------- Internal Signals ---------------//
     
     // Adder tree connection wires
-    wire [ (BIT_WIDTH*(Tn/2)) - 1 : 0 ] level_1_out;
-    wire [ (BIT_WIDTH*(Tn/4)) - 1 : 0 ] level_2_out;
-    wire [ (BIT_WIDTH*(Tn/8)) - 1 : 0 ] level_3_out;
-    wire [ (BIT_WIDTH*(Tn/16)) - 1 : 0 ] level_4_out;
+    wire [ (BIT_WIDTH*(Tn/2)) - 1 : 0 ] level_1_out;    // 8 buses
+    wire [ (BIT_WIDTH*(Tn/4)) - 1 : 0 ] level_2_out;    // 4 busses
+    wire [ (BIT_WIDTH*(Tn/8)) - 1 : 0 ] level_3_out;    // 2 busses
+    wire [ (BIT_WIDTH*(Tn/16)) - 1 : 0 ] level_4_out;   // 1 bus
     
-    wire [ (BIT_WIDTH-1) : 0 ] partial_sum_out;
+    wire [ (BIT_WIDTH-1) : 0 ] partial_sum_out;         // 1 bus from partial sum add
     
     //------------- Code Start -----------------//
     
@@ -110,7 +108,6 @@ module nfu_2 (
         clk,
         i_nfu1_out,
         i_nbout,
-        i_nbout_en,
         o_nfu2_out
     );
 
@@ -120,7 +117,6 @@ module nfu_2 (
 
     //----------- Input Ports ---------------//
     input clk;
-    input i_nbout_en;
     
     input [ ((BIT_WIDTH*TnxTn) - 1) : 0 ] i_nfu1_out;
     input [ ((BIT_WIDTH*Tn) - 1) : 0 ] i_nbout;
@@ -135,7 +131,6 @@ module nfu_2 (
             Tn_adder_tree T (
                 i_nfu1_out[ ((i+1)*Tn*BIT_WIDTH) - 1  : (i*Tn*BIT_WIDTH)  ],
                 i_nbout[ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ],
-                i_nbout_en,
                 o_nfu2_out [ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ]
             );
         end

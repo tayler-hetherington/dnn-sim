@@ -92,7 +92,8 @@ module sigmoid_op (
         16'b0000000000000011,
         xi1_seg_mux_out
     );
-    
+   
+    //--------- Stage 1: Read coefficients -------------//
     // 32-bit lines (16-bits concatenated for Ai and Bi)
     // 16 segments => address = 4bits
     ram #(.DATA_WIDTH(32), .ADDR_WIDTH(4)) COEF_RAM (
@@ -107,22 +108,21 @@ module sigmoid_op (
     // Internal stage 1
     always @(posedge clk) begin 
         if(i_load_coef) begin
-            we = 1'b1;
-            oe = 1'b0;
+            we <= 1'b1;
+            oe <= 1'b0;
         end
         else begin
-            we = 1'b0;
-            oe = 1'b1;
+            we <= 1'b0;
+            oe <= 1'b1;
         end
     
-        reg0[0] = i_X; 
-        reg0[1] = ai_ram_out;
-        reg0[2] = bi_ram_out;
+        reg0[0] <= i_X; 
+        reg0[1] <= ai_ram_out;
+        reg0[2] <= bi_ram_out;
+        
     end
     
-    
-    
-    // Internal stage 2
+    //----------- Stage 2: Multiplie X*ai -------------//
     qmult #(.Q(10), .N(16)) mul0 (
         reg0[0],
         reg0[1],
@@ -134,13 +134,13 @@ module sigmoid_op (
         reg1[1] = reg0[2];
     end
 
-    
-    // Internal stage 3
+    //--------- Stage 3: Add X*ai + bi -----------//
     qadd #(.Q(10), .N(16)) add0 (
         reg1[0],
         reg1[1],
         xi_ai_bi_add
     );
+
     assign o_Y = xi_ai_bi_add;
 
 endmodule // End module sigmoid_op

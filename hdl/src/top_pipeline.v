@@ -46,20 +46,25 @@ module top_pipeline (
 
 
     //----------- Internal Signals --------------//
+    // Wires
     wire [((BIT_WIDTH*TnxTn) - 1):0]    nfu1_out;
     wire [ (BIT_WIDTH*Tn) - 1 : 0 ]     nfu2_out;
     wire [ (BIT_WIDTH*Tn) - 1 : 0 ]     nfu3_out;
 
+    // Registers
+    // NBin register for current inputs
+    reg [ (BIT_WIDTH*Tn) - 1 : 0 ]      nb_in_reg;
 
-    // Main pipe registers
+    // SB register for current synapses
+    reg [((BIT_WIDTH*TnxTn) - 1):0]     sb_reg;
+    
+    // Main pipeline registers
     reg [((BIT_WIDTH*TnxTn) - 1):0]     nfu1_nfu2_pipe_reg;
     reg [ (BIT_WIDTH*Tn) - 1 : 0 ]      nfu2_nfu3_pipe_reg;
     
-    wire                                nbout_en;
     
     //------------- Code Start -----------------//
-    assign nbout_en = 1'b0;
-    
+
     // Depending on current state, either write NFU-2 partial sum 
     // or NFU-3 final results to NBout
     assign o_to_nbout = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
@@ -69,25 +74,29 @@ module top_pipeline (
     //-------------- Main Pipeline Stages --------------//
     //--------------------------------------------------// 
     // NFU-1
-    nfu_1 n1 (clk, i_inputs, i_synapses, nfu1_out);
+    nfu_1 n1 (clk, nb_in_reg, sb_reg, nfu1_out);
     
     // NFU-2
-    nfu_2 n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nbout_en, nfu2_out);
+    nfu_2 n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nfu2_out);
     
     // NFU-3
     nfu_3 n3(clk, nfu2_nfu3_pipe_reg, i_sigmoid_coef, i_load_sigmoid_coef, nfu3_out);
     
     
     always @(posedge clk) begin
-        // Either load NBout into the nfu2_nfu3_pipe reg or
-        // store the result of nfu2_out
+        // Load the inputs from the SRAMs to the internal registers
+        nb_in_reg <= i_inputs;
+        sb_reg <= i_synapses;
+
+        // Either load NBout (with partial sum) into the nfu2_nfu3_pipe 
+        // reg or store the result of nfu2_out.
         if (i_load_nbout) begin
-            nfu2_nfu3_pipe_reg = i_nbout_to_nfu2;
+            nfu2_nfu3_pipe_reg <= i_nbout_to_nfu2;
         end else begin
-            nfu2_nfu3_pipe_reg = nfu2_out;
+            nfu2_nfu3_pipe_reg <= nfu2_out;
         end
         
-        nfu1_nfu2_pipe_reg = nfu1_out;
+        nfu1_nfu2_pipe_reg <= nfu1_out;
     end
 
     //--------------------------------------------------// 

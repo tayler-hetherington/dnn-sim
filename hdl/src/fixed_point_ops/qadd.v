@@ -18,6 +18,7 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+
 module qadd(
         a,
         b,
@@ -73,5 +74,31 @@ begin
 		res[N-2:0] = b[N-2:0] - a[N-2:0];
 	end
 end
+
+endmodule
+
+
+module m_qadd(
+        a,
+        b,
+        c
+    );
+
+	//Parameterized values
+	parameter Q = 15;
+	parameter N = 32;
+
+    input [N-1:0] a;
+    input [N-1:0] b;
+    output [N-1:0] c;
+
+    reg [N-1:0] res;
+
+    assign c = res;
+
+    always @(a,b)
+    begin
+        res = a+b;
+    end
 
 endmodule
