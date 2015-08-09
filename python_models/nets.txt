@@ -10,8 +10,5 @@ googlenet_inception_5
 CNN_M_2048
 CNN_S
 alexnet
-caffenet
-flickr
-hybridCNN
-placesCNN
-rcnn
+convnet
+nin

@@ -39,11 +39,19 @@ my $resultDir = "/aenao-99/$me/dnn-sim/results";
 my $scriptDir = ".";
 my $filterDir = "/localhome/juddpatr/dnn-sim/python_models/filters";
 
-my $script = "bubble_up.py";
-my $prec = "7bits";
+$script = "bubble_up.py";
+$script = "bubble_up_rm_dup.py";
 
-$filterDir = $filterDir . "/csv_" . $prec;
+$prec = "high";
+$prec = "low";
 
+$batchName = "shared_FA_buffer_size_$prec";
+$batchName = "find_max_buffer_size_$prec";
+$batchName = "test_dont_evict_$prec";
+$batchName = "same_row_explore_$prec";
+
+$filterDir = $filterDir . "/" . $prec;
+( my $scriptName = $script )=~ s/\.[^.]+$//;
 # create common batch-job.submit for all jobs in this batch
 open($fh, ">batch-job.submit") or die "could not open batch-job.submit for writing\n";
 print $fh <<'END_MSG';
@@ -61,12 +69,11 @@ Should_Transfer_Files = no
 #When_To_Transfer_Output = ON_EXIT
 END_MSG
 
-print $fh "request_memory = 2048\n";
+print $fh "request_memory = 3072\n";
 close $fh;
 
 die "$resultDir does not exist\n" if ( ! -d $resultDir );
 
-$batchName = "test";
 $batchDir = "$resultDir/$batchName";
 
 # create batch dir and skeleton dir
@@ -91,6 +98,7 @@ if ($rerun) {
 my_system("cp batch-job.submit $batchDir/.skel/.") ;
 
 print "running for everything in $filterDir\n";
+@filters = ("alexnet");
 @filters = `cat nets.txt`;
 chomp(@filters);
 
@@ -100,13 +108,25 @@ print "Preparing $batchDir\n" unless $rerun;
 my_system("cp batch-job.submit job.submit");
 open($fh, ">>job.submit") or die "could not open submit for append\n";
 
-for my $lah (1..2){
+$num_rerun=0;
 
-    for my $las (0..1){
-        print "lah=$lah las=$las " unless $test;
-        ( my $scriptName = $script )=~ s/\.[^.]+$//;
+$lah = 3;
+$las = 4;
+$in = 1;
+$out = 1;
 
-        my $configDir = "$batchDir/$scriptName-$lah-$las";
+$buffer_size = 1000000;
+for my $out (1,2,4,8,16){
+    for my $in (1,2,4,8,16){
+#for my $buffer_size (16,32,64,128,256,512,1024,2048,4096,8192,16384){
+        $args = "$lah $las $out $in $buffer_size";
+#print "lah=$lah las=$las " unless $test;
+#print "buffer_size = $buffer_size" unless $test;
+        print "out=$out in=$in " unless $test;
+
+#$configDir = "$batchDir/$scriptName-$buffer_size";
+        $configDir = "$batchDir/$scriptName-$out-$in";
+
         my_system("mkdir $configDir") unless $rerun;
 
         for my $filter (@filters){
@@ -115,10 +135,11 @@ for my $lah (1..2){
             ( my $filterName = $filter )=~ s/\.[^.]+$//;
             my $runDir = "$configDir/$filterName";
             if ($rerun and -d $runDir) {
-                if (system("grep \"job completed sucessfully\" stdout") == 0)
+                if (system("grep \"job completed sucessfully\" $runDir/stdout 2>&1 >/dev/null") == 0) {
                     next; # if so, skip
                 } else {
                     print "Rerunning $runDir\n";
+                    $num_rerun++;
                 }
             } else { 
                 # setup runDir
@@ -128,10 +149,8 @@ for my $lah (1..2){
                 }
                 my_system("ln -s $runDir/$script $runDir/script");
                 my_system("echo $filterDir/$filter*.csv > $runDir/filters.txt");
+                my_system("echo \" $args\" > $runDir/args"); 
             }
-
-            $args = "$lah $las";
-            my_system("echo \"$args\" > $runDir/args"); 
 
             # append job details to submit script
             print $fh "InitialDir = $runDir\n";
@@ -143,8 +162,13 @@ for my $lah (1..2){
     } # foreach config
     print "\n" if not $test and not $rerun;
 } # foreach filter
-
 close $fh;
+
+if ($rerun and $num_rerun == 0){
+    print "All jobs completed successfully, nothing to rerun\n";
+    exit;
+}
+
 my_system("condor_submit job.submit") unless $norun;
 
 #----------------------------------------------------------------------------------------------
