@@ -97,17 +97,23 @@ lines = file.readlines()
 for line in lines:
     try:
         #input_file, lookaside, lookahead, rows, total, end = line.split(',')
-        input_file, lookaside, lookahead, rows, total, end = line.split(',')
+        input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
         lookaside = int(lookaside)
         lookahead = int(lookahead)
+        out_limit = int(out_limit)
+        in_limit = int(in_limit)
 
-        max_lookaside = max(max_lookaside,lookaside)
-        max_lookahead = max(max_lookahead,lookahead)
+        # choose x and n parameters here
+        x_param = in_limit
+        n_param = out_limit
+
+        max_x_param = max(max_x_param,x_param)
+        max_n_param = max(max_n_param,n_param)
     except ValueError:
         next
 
-# ndarray (lookaside,lookahead,network)
-redux = np.zeros((max_lookaside+1,max_lookahead+1,len(files)))
+# ndarray (x,n,network)
+redux = np.zeros((max_x_param+1,max_n_param+1,len(files)))
 
 # read each input file
 for f in range(0,len(files)):
@@ -117,12 +123,22 @@ for f in range(0,len(files)):
     total_row=0
 
     # get total rows and reduced rows for whole network
-    total_row_redux = np.zeros((max_lookaside+1,max_lookahead+1))
+    # 
+    total_row_redux = np.zeros(redux.shape[0,1])
     total_row = np.zeros(total_row_redux.shape)
 
     for line in lines:
         try:
-            input_file, lookaside, lookahead, rows, total, end = line.split(',')
+            #input_file, lookaside, lookahead, rows, total, end = line.split(',')
+            input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
+            lookaside = int(lookaside)
+            lookahead = int(lookahead)
+            out_limit = int(out_limit)
+            in_limit = int(in_limit)
+
+            # choose x and n parameters here
+            x_param = in_limit
+            n_param = out_limit
             total_row_redux[lookaside,lookahead] += int(rows)
             total_row[lookaside,lookahead] += int(total)
         except ValueError:
@@ -139,12 +155,13 @@ avg = redux.mean(2)
 print "Avg"
 print avg
 
+sys.exit()
 
 
 #for f in range(0,len(files)):
 #    plot_2d(redux[:,:,f], 'Lookaside distance scaling %s' % net_names[f], 'Lookaside distance', 'Runtime')
-if (0):
-    save_file = 'las_scaling_%s' % precision
+if (1):
+    save_file = 'mux_config_%s' % precision
     plot_2d(avg, 'Average Lookaside distance scaling (%s)' % precision, 'Lookaside distance', 'Computation')
     plt.savefig(save_file + '.eps', format='eps', dpi=1000)
     np.savetxt(save_file + '.csv', avg, delimiter=",", fmt="%.4f")
@@ -172,7 +189,7 @@ if (0):
     np.savetxt(save_file + '.csv', cost_comp, delimiter=",", fmt="%.4f")
 
 # show per network performance for best config
-if (1):
+if (0):
     group_names = ('Small','Best','Large')
     small =     redux[0,1,:]
     best =      redux[4,3,:]

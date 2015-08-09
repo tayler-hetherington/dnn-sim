@@ -232,10 +232,10 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
 
-
     # iterate in chunk order and save duplicate values
     global glob_dups
     global removed_dups
+    global forwarded_dups
     global buffer
     global glob_max_buffer_size 
     for r in range(R):
@@ -252,7 +252,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
                     # is the product already in the buffer
                     if (w,gi) in buffer:
                         if (gn not in buffer[(w,gi)]):
-                            continue # this value was forwarded
+                            continue # this product was forwarded by a previous operation
 
                         # remove current key
                         buffer[(w,gi)].remove(gn)
@@ -278,6 +278,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
                         for d in dups:
                             if gn/Tn == d/Tn:
                                 dups.remove(d)
+                                forwarded_dups += 1
                                 removed_dups += 1
 
                         if ( len(dups) == 0 ):
@@ -290,6 +291,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
                         keys = buffer.keys()
                         if (len(keys) >= buffer_size):
                             # buffer is full
+                            continue # dont evict ever
                             
                             # find an eviction candidate
                             # policy: longest next reuse
@@ -486,6 +488,7 @@ glob_max_buffer_size = 0
 
 total_dups = 0
 removed_dups = 0
+forwarded_dups = 0
 buffer = {}
 
 add = 0
@@ -524,7 +527,7 @@ for key in buffer:
 
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
-cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups, glob_max_buffer_size)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
     print str(c) +",",
 
