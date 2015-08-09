@@ -5,6 +5,39 @@
 import numpy as np
 import math
 
+def n_i_to_cycle(n,i,Nn,Ni):
+    Tn = 16
+    Ti = 16
+    Tnn = 1024
+    Tii = 1024
+    
+    # one cycles processes Ti inputs and produces Tn outputs
+    ii = i/Ti
+    nn = n/Tn
+
+    # think in terms of tiles of rows
+    Rnn = min(Tnn,Nn)/Tn
+    Rii = min(Tii,Ni)/Ti
+
+    Nri = Ni/Ti
+    Nrn = Nn/Tn
+
+
+    # tile indicies (top left corner)
+    iii = ii/Rii*Rii
+    nnn = nn/Rnn*Rnn
+
+    # height/width of this tile:
+    Hii = min(Rii, Nri - iii)
+    Wnn = min(Rnn, Nrn - nnn)
+
+    # offsets within a tile
+    dnn = nn-nnn
+    dii = ii-iii
+
+    cycle = nnn*Nri + iii*Rnn + dnn*Hii + dii
+    return cycle
+
 def chunk(weights):
     Tn = 16
     Ti = 16
@@ -15,6 +48,7 @@ def chunk(weights):
     chunks = []
     chunk_idx = []
 
+    c=0
     for nnn in range(0, Nn, Tnn):
         for iii in range(0, Ni, Tii):
 

@@ -65,6 +65,13 @@ def zero():
 # def zero():
     # return '0'
 
+def map_weight(w):
+    global negatives_are_dups 
+    if (negatives_are_dups):
+        return abs(w)
+    else:
+        return w
+
 def map_duplicates(weights, absolute=False):
 
     # get dimensions
@@ -72,11 +79,9 @@ def map_duplicates(weights, absolute=False):
 
     dup_map = {}
 
-    for r in range(0,R):
-
-        for n in range(0,Tn):
-
-            for i in range(0,Ti):
+    for r in range(R):
+        for n in range(Tn):
+            for i in range(Ti):
 
                # don't add zeroes
                if (not weights[r,n,i]):
@@ -125,7 +130,7 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
         remove_n = set()
         for nn in look_in_n:
 
-            for ii in range(0,Ti):
+            for ii in range(Ti):
 
                 # found all the duplicates, return
                 if (len(dup_index) == dup_map[dup_key] - 1):
@@ -207,6 +212,7 @@ def get_global_weight_idx(chunk_n, chunk_i, r, n, i):
 
 def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
     chunk_n, chunk_i = weight_idx
+    #print "chunk:", chunk_n, chunk_i
     zero_rows = 0;
 
 
@@ -231,29 +237,83 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     global glob_dups
     global removed_dups
     global buffer
+    global glob_max_buffer_size 
     for r in range(R):
         for n in range(Tn):
             for i in range(Ti):
-                w = weights[r,n,i]
+                w = map_weight(weights[r,n,i])
                 if (w == 0):
                     continue
 
                 (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
                 # is this a duplicate?
                 if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
+
                     # is the product already in the buffer
                     if (w,gi) in buffer:
+                        if (gn not in buffer[(w,gi)]):
+                            continue # this value was forwarded
+
                         # remove current key
                         buffer[(w,gi)].remove(gn)
                         removed_dups += 1
+                        # print "removed",w,gn,gi
                         # have all the duplicates been forwarded?
                         if len(buffer[(w,gi)]) == 0:
                             # get rid of this entry in the buffer
                             del buffer[(w,gi)]
                     else:
+                        # product is not stored in the buffer
+
+                        # will this product be reused?
+                        nidx = glob_dups[(w,gi)].index(gn) 
+                        if ( nidx == len(glob_dups[(w,gi)])-1 ):
+                            # last duplicate in list, don't save
+                            continue
+
+                        # get the remaining duplicates
+                        dups = list(glob_dups[(w,gi)][nidx+1:])
+                            
+                        # can the duplicates be forwarded this cycle?
+                        for d in dups:
+                            if gn/Tn == d/Tn:
+                                dups.remove(d)
+                                removed_dups += 1
+
+                        if ( len(dups) == 0 ):
+                            # all duplicates forwarded
+                            continue
+
                         # add to buffer
-                        buffer[(w,gi)] = list(glob_dups[(w,gi)])
-                        buffer[(w,gi)].remove(gn) # remove the current entry, this calculates the product
+                        global buffer_size
+
+                        keys = buffer.keys()
+                        if (len(keys) >= buffer_size):
+                            # buffer is full
+                            
+                            # find an eviction candidate
+                            # policy: longest next reuse
+                            victim_c = -1
+                            victim_key = []
+                            for key in keys:
+                                (kn,ki) = (buffer[key][0],key[1])
+                                next_c = chunk.n_i_to_cycle(kn,ki,Nn,Ni)
+                                if next_c > victim_c:
+                                    victim_c = next_c
+                                    victim_key = key
+#                            print "n =",gn, "evicting", buffer[victim_key]
+
+                            # if victim has longer reuse than the current dup, replace it
+                            replacement_c = chunk.n_i_to_cycle(dups[0], gi, Nn, Ni)
+                            if (victim_c > replacement_c):
+                                del buffer[victim_key]
+                            else:
+                                continue #don't add replacement to the list
+
+                        buffer[(w,gi)] = dups
+                        glob_max_buffer_size = max(glob_max_buffer_size, len(buffer.keys()))
+
+                                
                         
                 
     return
@@ -402,11 +462,13 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
 ######### MAIN ################################################################
 
-script, filename, lookaside, lookahead, out_limit, in_limit = sys.argv
+script, filename, lookaside, lookahead, out_limit, in_limit, buffer_size = sys.argv
 lookaside = int(lookaside)
 lookahead = int(lookahead)
 out_limit = int(out_limit)
 in_limit = int(in_limit)
+buffer_size = int(buffer_size)
+negatives_are_dups = True
 
 Ti=16
 Tn=16
@@ -416,10 +478,11 @@ Tn=16
 w = read_filters.read_filters(filename)
 (Nn, Ni) = w.shape
 
-print w.shape
+#print w.shape
 
 glob_weights = w
 glob_dups = {}
+glob_max_buffer_size = 0
 
 total_dups = 0
 removed_dups = 0
@@ -428,13 +491,14 @@ buffer = {}
 add = 0
 for i in range(Ni):
     for n in range(Nn):
-        weight = abs(w[n,i])
+        weight = map_weight(w[n,i])
         if (weight == 0):
             continue
         if ( not (weight,i) in glob_dups ):
             glob_dups[(weight,i)] = []
         else:
             add += 1
+            #print "add",weight,n,i
 
         glob_dups[(weight,i)].append(n)
 
@@ -460,8 +524,7 @@ for key in buffer:
 
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
-print "added removed left"
-cols = (add, removed_dups, left)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
     print str(c) +",",
 
