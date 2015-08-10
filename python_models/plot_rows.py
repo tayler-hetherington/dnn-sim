@@ -83,11 +83,9 @@ global precision
 precision = args.pop(0)
 files = args
 
-if ('csv' in precision):
-    print "usage: %s <label> <list of csv files>" % script
-    sys.exit()
-
-net_names = [re.sub('_\dbit.csv','',(basename(w))) for w in files]
+file = open('net_names.txt')
+net_names = [re.sub(".csv","",(basename(w))) for w in files]
+print net_names
 
 # get max lookahead and lookaside
 max_lookaside = 0
@@ -108,6 +106,7 @@ for line in lines:
 
 # ndarray (lookaside,lookahead,network)
 redux = np.zeros((max_lookaside+1,max_lookahead+1,len(files)))
+print "array shape", redux.shape
 
 # read each input file
 for f in range(0,len(files)):
@@ -143,10 +142,10 @@ print avg
 
 #for f in range(0,len(files)):
 #    plot_2d(redux[:,:,f], 'Lookaside distance scaling %s' % net_names[f], 'Lookaside distance', 'Runtime')
-if (0):
+if (1):
     save_file = 'las_scaling_%s' % precision
-    plot_2d(avg, 'Average Lookaside distance scaling (%s)' % precision, 'Lookaside distance', 'Computation')
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plot_2d(avg, 'Lookaside distance scaling (%s)' % precision, 'Lookaside distance', 'Computation')
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     np.savetxt(save_file + '.csv', avg, delimiter=",", fmt="%.4f")
 
 #evaluate cost
@@ -162,7 +161,7 @@ if (0):
     print avg
     save_file = 'cost_%s' % precision
     plot_scatter(cost, avg, 'Cost Benefit analysis (%s)' % precision, 'Cost (mux inputs)', 'Computation')
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     cost_comp = np.concatenate( 
             (   d_mat[:,1:].reshape(-1,1),
                 w_mat[:,1:].reshape(-1,1),
@@ -172,7 +171,7 @@ if (0):
     np.savetxt(save_file + '.csv', cost_comp, delimiter=",", fmt="%.4f")
 
 # show per network performance for best config
-if (1):
+if (0):
     group_names = ('Small','Best','Large')
     small =     redux[0,1,:]
     best =      redux[4,3,:]
@@ -184,7 +183,7 @@ if (1):
     plot_bar(comp_net, "Computations per network (%s)" % precision, "networks", "computation", net_names, group_names)
 
     save_file = 'comp_per_net_%s' % precision
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     np.savetxt(save_file + '.csv', comp_net, delimiter=",", fmt="%.4f")
 
 # draw and wait for keyboard

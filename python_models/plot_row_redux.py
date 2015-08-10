@@ -18,23 +18,25 @@ def debug():
 
 np.set_printoptions(precision=4)
 
-def plot_2d(data, title, xlabel, ylabel):
+def plot_2d(data, x_axis, n_axis, title, xlabel, ylabel, legend_title):
     fig = plt.figure()
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.autoscale(enable=True, axis=u'both', tight=False)
+#plt.autoscale(enable=True, axis=u'both', tight=False)
     ax = fig.add_subplot(1,1,1)
     fmt = '%.0f%%' # Format you want the ticks, e.g. '40%'
     yticks = mtick.FormatStrFormatter(fmt)
     ax.yaxis.set_major_formatter(yticks)
+    ax.set_xticklabels(x_axis) 
+    ax.set_xticks(range(len(x_axis))) # tick position wrt data idx
 
-    for las in range(1,data.shape[1]):
-        d = ( data[:,las] * 100 ).tolist()
-        x = range(0,len(d))
+    for n in range(0,data.shape[1]):
+        d = ( data[:,n] * 100 ).tolist()
+        x = range(0,data.shape[0]) #x_axis
         y = d
-        ax.plot(x,y, label='%d' % las)
-        plt.legend(title='lookahead distance')
+        ax.plot(x,y, label='%d' % n_axis[n])
+        plt.legend(title=legend_title)
 
 def plot_scatter(dx, dy, title, xlabel, ylabel):
     fig = plt.figure()
@@ -75,6 +77,12 @@ def plot_bar(data, title, xlabel, ylabel, xticks, group_names):
 
     ax.legend(groups, group_names, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 
+def insert_unique(l, n):
+  if n not in l:
+    l.append(n)
+    l.sort()
+    
+
 ###############################################################################
 
 args = list(sys.argv)
@@ -83,21 +91,27 @@ global precision
 precision = args.pop(0)
 files = args
 
-if ('csv' in precision):
-    print "usage: %s <label> <list of csv files>" % script
-    sys.exit()
+file = open('net_names.txt')
 
-net_names = [re.sub('_\dbit.csv','',(basename(w))) for w in files]
+net_names = [re.sub(".csv","",(basename(w))) for w in files]
+print net_names
 
-# get max lookahead and lookaside
-max_lookaside = 0
-max_lookahead = 0
+x_vals = []
+n_vals = []
+x_label = 'in_limit'
+n_label = 'out_limit'
+
+input_file = ''
+
 file = open(files[0])
 lines = file.readlines()
 for line in lines:
     try:
         #input_file, lookaside, lookahead, rows, total, end = line.split(',')
-        input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
+        #input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
+        # buffer_size:(filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
+        filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size, end = line.split(',')
+
         lookaside = int(lookaside)
         lookahead = int(lookahead)
         out_limit = int(out_limit)
@@ -107,13 +121,15 @@ for line in lines:
         x_param = in_limit
         n_param = out_limit
 
-        max_x_param = max(max_x_param,x_param)
-        max_n_param = max(max_n_param,n_param)
+        insert_unique(x_vals,x_param)
+        insert_unique(n_vals,n_param)
     except ValueError:
         next
 
+#precision = (re.search('','alexnet_7bit.csv')).group(0)
+
 # ndarray (x,n,network)
-redux = np.zeros((max_x_param+1,max_n_param+1,len(files)))
+redux = np.zeros(( len(x_vals),len(n_vals),len(files)))
 
 # read each input file
 for f in range(0,len(files)):
@@ -124,23 +140,26 @@ for f in range(0,len(files)):
 
     # get total rows and reduced rows for whole network
     # 
-    total_row_redux = np.zeros(redux.shape[0,1])
+    total_row_redux = np.zeros(redux.shape[:2]) # size of first 2 dims
     total_row = np.zeros(total_row_redux.shape)
 
     for line in lines:
         try:
             #input_file, lookaside, lookahead, rows, total, end = line.split(',')
-            input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
+            #input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
+            filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size, end = line.split(',')
             lookaside = int(lookaside)
             lookahead = int(lookahead)
             out_limit = int(out_limit)
             in_limit = int(in_limit)
 
             # choose x and n parameters here
-            x_param = in_limit
-            n_param = out_limit
-            total_row_redux[lookaside,lookahead] += int(rows)
-            total_row[lookaside,lookahead] += int(total)
+            x = in_limit
+            n = out_limit
+            x_idx = x_vals.index(x)
+            n_idx = n_vals.index(n)
+            total_row_redux[x_idx,n_idx] += int(rows)
+            total_row[x_idx,n_idx] += int(total)
         except ValueError:
             next
 
@@ -155,15 +174,14 @@ avg = redux.mean(2)
 print "Avg"
 print avg
 
-sys.exit()
 
 
 #for f in range(0,len(files)):
 #    plot_2d(redux[:,:,f], 'Lookaside distance scaling %s' % net_names[f], 'Lookaside distance', 'Runtime')
 if (1):
     save_file = 'mux_config_%s' % precision
-    plot_2d(avg, 'Average Lookaside distance scaling (%s)' % precision, 'Lookaside distance', 'Computation')
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plot_2d(avg, x_vals, n_vals, 'Mux configurations (%s)' % precision, x_label, 'Computation', n_label)
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     np.savetxt(save_file + '.csv', avg, delimiter=",", fmt="%.4f")
 
 #evaluate cost
@@ -179,7 +197,7 @@ if (0):
     print avg
     save_file = 'cost_%s' % precision
     plot_scatter(cost, avg, 'Cost Benefit analysis (%s)' % precision, 'Cost (mux inputs)', 'Computation')
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     cost_comp = np.concatenate( 
             (   d_mat[:,1:].reshape(-1,1),
                 w_mat[:,1:].reshape(-1,1),
@@ -201,7 +219,7 @@ if (0):
     plot_bar(comp_net, "Computations per network (%s)" % precision, "networks", "computation", net_names, group_names)
 
     save_file = 'comp_per_net_%s' % precision
-    plt.savefig(save_file + '.eps', format='eps', dpi=1000)
+    plt.savefig(save_file + '.pdf', format='pdf', dpi=1000)
     np.savetxt(save_file + '.csv', comp_net, delimiter=",", fmt="%.4f")
 
 # draw and wait for keyboard
