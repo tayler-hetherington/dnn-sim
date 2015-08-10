@@ -102,7 +102,7 @@ def map_duplicates(weights, absolute=False):
 
 # for a given entry r,n,i scan current row and the original row
 # 
-def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
+def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=False):
 
 
     # get dimensions 
@@ -111,8 +111,8 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
     # provider's real index and weight
     (pr,pn,pi) = ind[r,n,i]
     pw = weights[r,n,i]
-
-
+    if (absolute):
+        pw = abs(pw)
 
     #print "LD: ", (ind[r,n,i]), (r,n,i), " ",  weights[r,n,i]
     # where to look for
@@ -138,9 +138,12 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
 
                 # get target's real index
                 (dr,dn,di) = ind[rr,nn,ii]
+                dw = weights[rr,nn,ii]
+                if (absolute):
+                    dw = abs(dw)
 
                 # found a dup if both the real r, i and weights are the same
-                if (weights[rr,nn,ii] == pw and dr == pr and di == pi):
+                if (dw == pw and dr == pr and di == pi):
                    remove_n.add(nn)
                    dup_index.append((rr,nn,ii))
                    break
@@ -321,6 +324,27 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     return
 
 #################################################################################
+
+def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
+
+    chunk_n, chunk_i = weight_idx
+    #print "chunk:", chunk_n, chunk_i
+    zero_rows = 0;
+
+    # recalculate global index
+    (R,Tn,Ti) = weights.shape
+    ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
+    dup_map = map_duplicates(weights, True)
+
+    out_per_row = [0] * (Ti+1)
+    in_per_row = [0] * (Tn+1)
+    out_res_per_row = [0] * (Ti+1)
+    in_res_per_row = [0] * (Tn+1)
+
+    zero_rm = 0 # number of zeros removed
+    dup_rm = 0 # number of dups removed
+    dup_bubble = 0 # ignore
+    dup_bubble_pop = 0 # ignore
 
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
@@ -516,7 +540,7 @@ for key in glob_dups:
 #print "processing each chunk"
 np.set_printoptions(threshold=np.inf)
 for (c, c_idx) in zip(chunks, chunk_idxs):
-    process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
+    process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit)
 
 left=0
 for key in buffer:
@@ -525,9 +549,9 @@ for key in buffer:
         #print "left ", i, n
         left += 1
 
-#cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
-cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
+#cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
     print str(c) +",",
 
