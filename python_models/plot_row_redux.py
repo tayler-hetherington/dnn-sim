@@ -88,7 +88,6 @@ def insert_unique(l, n):
 args = list(sys.argv)
 script = args.pop(0)
 global precision
-precision = args.pop(0)
 files = args
 
 file = open('net_names.txt')
@@ -96,85 +95,77 @@ file = open('net_names.txt')
 net_names = [re.sub(".csv","",(basename(w))) for w in files]
 print net_names
 
+batch_name = files[0].split("/")[1] # results/<batch>/<script>-<config>/<net>.csv
+precision = batch_name.split('_')[-1]
+
 x_vals = []
 n_vals = []
-x_label = 'in_limit'
-n_label = 'out_limit'
 
+# placeholder parameters
+x_label = 'x'
+x_col = 0
+y_label = 'y'
+y_redux_col = 1
+y_col = 2
+n_label = 'n'
+n_col = 3
+title = 'title'
 input_file = ''
+save_file = batch_name
+
+#define parameters for your experiment here
+
+if ('same_row_explore' in batch_name):
+    x_label = 'in_limit'
+    x_col = 4
+    n_label = 'out_limit'
+    n_col = 3
+    title = 'Buffer Size (%s)' % precision
+    y_label = 'Removed Duplicates'
+    y_redux_col = 5
+    y_col = 6
+
 
 file = open(files[0])
 lines = file.readlines()
 for line in lines:
-    try:
-        #input_file, lookaside, lookahead, rows, total, end = line.split(',')
-        #input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
-        # buffer_size:(filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
-        filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size, end = line.split(',')
-
-        lookaside = int(lookaside)
-        lookahead = int(lookahead)
-        out_limit = int(out_limit)
-        in_limit = int(in_limit)
-
-        # choose x and n parameters here
-        x_param = in_limit
-        n_param = out_limit
-
-        insert_unique(x_vals,x_param)
-        insert_unique(n_vals,n_param)
-    except ValueError:
-        next
-
-#precision = (re.search('','alexnet_7bit.csv')).group(0)
+    cols = line.split(',')
+    x = int(cols[x_col])
+    n = int(cols[n_col])
+    insert_unique(x_vals,x)
+    insert_unique(n_vals,n)
 
 # ndarray (x,n,network)
 redux = np.zeros(( len(x_vals),len(n_vals),len(files)))
+print "(x,n,net) =", redux.shape
 
 # read each input file
 for f in range(0,len(files)):
     file = open(files[f])
     lines = file.readlines()
-    total_row_redux=0
-    total_row=0
 
     # get total rows and reduced rows for whole network
-    # 
-    total_row_redux = np.zeros(redux.shape[:2]) # size of first 2 dims
-    total_row = np.zeros(total_row_redux.shape)
+    y_redux = np.zeros(redux.shape[:2]) # size of first 2 dims
+    y = np.zeros(y_redux.shape)
 
     for line in lines:
-        try:
-            #input_file, lookaside, lookahead, rows, total, end = line.split(',')
-            #input_file, lookaside, lookahead, out_limit, in_limit, rows, total, end = line.split(',')
-            filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size, end = line.split(',')
-            lookaside = int(lookaside)
-            lookahead = int(lookahead)
-            out_limit = int(out_limit)
-            in_limit = int(in_limit)
+        cols = line.split(',')
+        x = int(cols[x_col])
+        n = int(cols[n_col])
+        x_idx = x_vals.index(x)
+        n_idx = n_vals.index(n)
+        y_redux[x_idx,n_idx] += int(cols[y_redux_col])
+        y[x_idx,n_idx] += int(cols[y_col])
 
-            # choose x and n parameters here
-            x = in_limit
-            n = out_limit
-            x_idx = x_vals.index(x)
-            n_idx = n_vals.index(n)
-            total_row_redux[x_idx,n_idx] += int(rows)
-            total_row[x_idx,n_idx] += int(total)
-        except ValueError:
-            next
+    #y[:,0] = y[:,1] # total rows should always be the same total_row_redux[:,0]    = total_row[:,0] # no redux with no lookahead
 
-
-    total_row[:,0]          = total_row[:,1] # total rows should always be the same total_row_redux[:,0]    = total_row[:,0] # no redux with no lookahead
-
-    redux[:,:,f] = np.divide(total_row_redux, total_row)
+    redux[:,:,f] = np.divide(y_redux, y)
     print net_names[f]
     print redux[:,:,f]
 
 avg = redux.mean(2)
 print "Avg"
 print avg
-
-
 
 #for f in range(0,len(files)):
 #    plot_2d(redux[:,:,f], 'Lookaside distance scaling %s' % net_names[f], 'Lookaside distance', 'Runtime')
