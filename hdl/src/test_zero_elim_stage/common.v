@@ -484,18 +484,19 @@ module ram (
         i_address,
         i_data, 
         i_we, 
+        i_oe,
         o_data
     ); 
 
-    parameter DATA_WIDTH = 32;
-    parameter ADDR_WIDTH = 4;
+    parameter DATA_WIDTH = 8;
+    parameter ADDR_WIDTH = 8 ;
     parameter RAM_DEPTH = 1 << ADDR_WIDTH;
 
     //--------------Input Ports----------------------- 
     input                  clk;
     input [ADDR_WIDTH-1:0] i_address;
     input                  i_we;
-    //input                  i_oe; 
+    input                  i_oe; 
 
     //--------------Inout Ports----------------------- 
     input [DATA_WIDTH-1:0]  i_data;
@@ -504,13 +505,11 @@ module ram (
     //--------------Internal variables---------------- 
     reg [DATA_WIDTH-1:0] data_out ;
     reg [DATA_WIDTH-1:0] mem [0:RAM_DEPTH-1];
-    
-    //reg                  oe_r;
+    reg                  oe_r;
 
     //--------------Code Starts Here------------------ 
     // Output
-    //assign o_data = (i_oe && !i_we) ? data_out : 8'bz; 
-    assign o_data = data_out;
+    assign o_data = (i_oe && !i_we) ? data_out : 8'bz; 
 
     // Write
     //always @ (posedge clk) begin
@@ -523,9 +522,6 @@ module ram (
         if( i_we ) begin
             mem[i_address] = i_data;
         end
-
-        data_out = mem[i_address];
-        /*
         else if (i_oe) begin
             data_out = mem[i_address];
             oe_r = 1;
@@ -533,7 +529,6 @@ module ram (
         else begin
             oe_r = 0;
         end
-        */
     end
 
 endmodule
