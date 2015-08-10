@@ -7,20 +7,20 @@
 #/**************************************************/
 
 #/* All verilog files, separated by spaces         */
-set my_verilog_files [list mux.v nfu-1A.v ]
+set my_verilog_files [list common.v ../integer_ops/int_add.v nfu-2A.v nfu-2B.v top.v ]
 #set my_verilog_files [list mux.v top.v ]
 
-
-
 #/* Top-level Module                               */
-set my_toplevel nfu_1A_D1_W0
+set my_toplevel top_level 
+
+#nfu_1A_D1_W0
 
 #/* The name of the clock pin. If no clock-pin     */
 #/* exists, pick anything                          */
-#set my_clock_pin clk
+set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization       */
-#set my_clk_freq_MHz 200
+set my_clk_freq_MHz 20.0
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 #set my_input_delay_ns 0.1
@@ -28,11 +28,11 @@ set my_toplevel nfu_1A_D1_W0
 #/* Reserved time for output signals (Holdtime etc.)   */
 #set my_output_delay_ns 0.1
 
+#set_host_options -max_cores 4
 
 #/**************************************************/
 #/* No modifications needed below                  */
 #/**************************************************/
-#set PDK_DIR ~/ece/FreePDK45
 set PDK_DIR /ubc/ece/home/ta/grads/taylerh/FreePDK45/FreePDK45/
 set OSU_FREEPDK [format "%s%s"  $PDK_DIR "/osu_soc/lib/files"]
 set search_path [concat  $search_path $OSU_FREEPDK]
@@ -43,17 +43,11 @@ set target_library "gscl45nm.db"
 
 define_design_lib WORK -path ./WORK
 
-
 #set verilogout_show_unconnected_pins "true"
-#set_ultra_optimization true
-#set_ultra_optimization -force
-
-
 
 #analyze -format sverilog $my_verilog_files
 analyze -format verilog $my_verilog_files
 
-#elaborate $my_toplevel -architecture RTL
 elaborate $my_toplevel
 
 current_design $my_toplevel
@@ -62,16 +56,27 @@ link
 uniquify
 
 
-#set my_period [expr 1000 / $my_clk_freq_MHz]
+set my_period [expr 1000.0 / $my_clk_freq_MHz]
 
-#set find_clock [ find port [list $my_clock_pin] ]
-#if {  $find_clock != [list] } {
-#   set clk_name $my_clock_pin
-#   create_clock -period $my_period $clk_name
-#} else {
-#   set clk_name vclk
-#   create_clock -period $my_period -name $clk_name
-#}
+set find_clock [ find port [list $my_clock_pin] ]
+if {  $find_clock != [list] } {
+   set clk_name $my_clock_pin
+   create_clock -period $my_period $clk_name
+} else {
+   set clk_name vclk
+   create_clock -period $my_period -name $clk_name
+}
+
+
+puts -nonewline "Clk freq: "
+puts -nonewline $my_clk_freq_MHz
+puts " MHz"
+
+puts -nonewline "Clk period: "
+puts -nonewline $my_period
+puts " ns"
+
+
 
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_inputs
 #set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_clock_pin i_synapses
@@ -93,7 +98,11 @@ uniquify
 #set_input_delay $my_input_delay_ns -reference_pin clk [remove_from_collection [all_inputs] clk]
 #set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
 
-compile_ultra
+
+quit
+
+compile_ultra -no_seq_output_inversion
+
 #compile -area_effor high
 
 #compile_ultra -no_autoungroup
