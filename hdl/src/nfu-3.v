@@ -41,7 +41,7 @@ module sigmoid_op (
     
     wire [(BIT_WIDTH-1) : 0] xi_seg_mux_out, xi1_seg_mux_out;
     
-    reg we, oe;
+    reg we;
     
     //------------- Code Start -----------------//
     
@@ -101,7 +101,6 @@ module sigmoid_op (
         {xi_seg_mux_out[1:0], xi1_seg_mux_out[1:0]},
         i_coef,
         we,
-        oe,
         {ai_ram_out, bi_ram_out}
     );
     
@@ -109,11 +108,9 @@ module sigmoid_op (
     always @(posedge clk) begin 
         if(i_load_coef) begin
             we <= 1'b1;
-            oe <= 1'b0;
         end
         else begin
             we <= 1'b0;
-            oe <= 1'b1;
         end
     
         reg0[0] <= i_X; 
@@ -123,7 +120,15 @@ module sigmoid_op (
     end
     
     //----------- Stage 2: Multiplie X*ai -------------//
-    qmult #(.Q(10), .N(16)) mul0 (
+/*
+    int_mult mul0 (
+        reg0[0],
+        reg0[1],
+        xi_ai_mult
+    );
+*/
+
+qmult #(.Q(10), .N(16)) mul0 (
         reg0[0],
         reg0[1],
         xi_ai_mult
@@ -135,6 +140,14 @@ module sigmoid_op (
     end
 
     //--------- Stage 3: Add X*ai + bi -----------//
+    /*
+    int_add add0 (
+        reg1[0],
+        reg1[1],
+        xi_ai_bi_add
+    );
+    */
+    
     qadd #(.Q(10), .N(16)) add0 (
         reg1[0],
         reg1[1],

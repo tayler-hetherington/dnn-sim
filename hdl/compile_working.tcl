@@ -20,7 +20,7 @@ set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization */
 #/* Trying for 0.98 GHz                      */
-set my_clk_freq_MHz 980
+set my_clk_freq_MHz 980.0
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 #set my_input_delay_ns 0.1
@@ -28,11 +28,12 @@ set my_clk_freq_MHz 980
 #/* Reserved time for output signals (Holdtime etc.)   */
 #set my_output_delay_ns 0.1
 
+#/* Enable parallel execution                          */
+set_host_options -max_cores 4
 
 #/**************************************************/
 #/* No modifications needed below                  */
 #/**************************************************/
-#set PDK_DIR ~/ece/FreePDK45
 set PDK_DIR /ubc/ece/home/ta/grads/taylerh/FreePDK45/FreePDK45/
 set OSU_FREEPDK [format "%s%s"  $PDK_DIR "/osu_soc/lib/files"]
 set search_path [concat  $search_path $OSU_FREEPDK]
