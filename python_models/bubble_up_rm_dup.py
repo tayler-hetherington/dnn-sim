@@ -14,6 +14,8 @@ import look_for_replacement as re
 total_reduced_rows = 0
 total_rows = 0
 
+group_size = 16
+
 def interact():
     import code
     code.InteractiveConsole(locals=globals()).interact()
@@ -116,7 +118,9 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=Fals
 
     #print "LD: ", (ind[r,n,i]), (r,n,i), " ",  weights[r,n,i]
     # where to look for
-    look_in_n = set(range(0,Tn))
+    global group_size
+    look_in_n = set(range(pn/group_size*group_size,
+                          pn/group_size*group_size+group_size))
     look_in_n.remove(pn)
 
     dup_index = []
@@ -325,7 +329,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
 #################################################################################
 
-def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
+def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit, absolute=True):
 
     chunk_n, chunk_i = weight_idx
     #print "chunk:", chunk_n, chunk_i
@@ -334,7 +338,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     # recalculate global index
     (R,Tn,Ti) = weights.shape
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
-    dup_map = map_duplicates(weights, True)
+    dup_map = map_duplicates(weights, absolute)
 
     out_per_row = [0] * (Ti+1)
     in_per_row = [0] * (Tn+1)
@@ -345,6 +349,9 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     dup_rm = 0 # number of dups removed
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
+
+    global out_b
+    global group_size
 
     for r in range(0,R-1):
     #    print "C:", weights[r,n,:]
@@ -364,6 +371,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
         # counter for the limits
         in_ctr = [in_limit] * Tn # input limit per filter (m), max inputs to adder tree
         out_ctr = [out_limit] * Ti # number of products that can be broadcast for an input i
+        group_out_ctr = [out_b] * (Tn / group_size) # number of products that can be broadcast for an input i
         ictr = 0 # number of products reused
         octr = 0 # number of products broadcast
         ires = 0 # ignore
@@ -384,7 +392,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                     if (key not in dup_found and not is_zero(weights[r,n,i])):
 
                         # dup_index is list of duplicates for (r,n,i)
-                        dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead)
+                        dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute)
                         dup_found.add(key)
                         if (dup_index):
                             dup_index.append((r,n,i))
@@ -420,6 +428,10 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                     # only output if the index is on the current row
                     if (r != rr):
                        continue   
+
+                    # make sure it has not exceeded group's output limit
+                    if (not group_out_ctr[nn/group_size]):
+                       continue
  
                     # remove all other duplicates if possible
                     (weights, ind, out_ctr, in_ctr, stat) = remove_duplicates(rr, nn, ii,
@@ -432,7 +444,8 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
 
                     # exit when a remove succeeded
                     if (stat[0]):
-                       break;
+                       group_out_ctr[nn/group_size] -= 1
+                       break
 
 
             # remove all the bubbles in the row
@@ -488,12 +501,14 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
 
 ######### MAIN ################################################################
 
-script, filename, lookaside, lookahead, out_limit, in_limit, buffer_size = sys.argv
+script, filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b = sys.argv
 lookaside = int(lookaside)
 lookahead = int(lookahead)
 out_limit = int(out_limit)
 in_limit = int(in_limit)
-buffer_size = int(buffer_size)
+#buffer_size = int(buffer_size)
+group_size = int(group_size)
+out_b = int(out_b)
 negatives_are_dups = True
 
 Ti=16
@@ -540,7 +555,7 @@ for key in glob_dups:
 #print "processing each chunk"
 np.set_printoptions(threshold=np.inf)
 for (c, c_idx) in zip(chunks, chunk_idxs):
-    process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit)
+    process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit, negatives_are_dups)
 
 left=0
 for key in buffer:
@@ -549,7 +564,7 @@ for key in buffer:
         #print "left ", i, n
         left += 1
 
-cols = (filename, lookaside, lookahead, out_limit, in_limit, total_reduced_rows, total_rows)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
