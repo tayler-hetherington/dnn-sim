@@ -1,0 +1,7 @@
+VGG19layers
+googlenet
+CNN_M_2048
+CNN_S
+alexnet
+convnet
+nin
