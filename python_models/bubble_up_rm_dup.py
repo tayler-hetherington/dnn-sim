@@ -383,12 +383,14 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
         while changed:
             changed = False
             dup_found_iter = []
-
             # look for duplicates
             for n in range(0,Tn):
                 for i in range(0,Ti):
                     # look for duplicates only if we haven't looked at it before
-                    key = (ind[r,n,i][0], ind[r,n,i][2], weights[r,n,i])
+                    w = weights[r,n,i]
+                    if (absolute):
+                       w = abs(w)
+                    key = (ind[r,n,i][0], ind[r,n,i][2], w)
                     if (key not in dup_found and not is_zero(weights[r,n,i])):
 
                         # dup_index is list of duplicates for (r,n,i)
@@ -400,7 +402,6 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                             #print "A ", dup_index, "W ", weights[r,n,i]
 
             # prioritize removal here
-
             # reorder the duplicate removal order
             # do the ones with more duplicates first
             dup_found_iter.sort(key=len, reverse=True)
@@ -420,7 +421,6 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
             for dup_list in dup_found_iter:
                 # for each set of duplicates
                 # first dup that can be issued (in the current row) will be issued, rest will be removed
-
                 for index in dup_list:
 
                     (rr,nn,ii) = index 
@@ -497,7 +497,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     #ind = ind[wa,:,:]
     #weights = weights[wa,:,:]
 
-    #return (R-zero_rows,ind,weights)
+    return (zero_rm, dup_rm)
 
 ######### MAIN ################################################################
 
@@ -554,8 +554,12 @@ for key in glob_dups:
 
 #print "processing each chunk"
 np.set_printoptions(threshold=np.inf)
+zero_rm = 0
+dup_rm = 0
 for (c, c_idx) in zip(chunks, chunk_idxs):
-    process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit, negatives_are_dups)
+    (z,r) = process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit, negatives_are_dups)
+    zero_rm += z
+    dup_rm += r
 
 left=0
 for key in buffer:
@@ -564,7 +568,7 @@ for key in buffer:
         #print "left ", i, n
         left += 1
 
-cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, total_reduced_rows, total_rows)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, zero_rm, dup_rm, total_dups, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
