@@ -520,11 +520,11 @@ module ram (
     //end
 
     always @ (posedge clk) begin
-        if( i_we ) begin
-            mem[i_address] = i_data;
+        if( i_we == 1 ) begin
+            mem[i_address] <= i_data;
         end
 
-        data_out = mem[i_address];
+        data_out <= mem[i_address];
         /*
         else if (i_oe) begin
             data_out = mem[i_address];
