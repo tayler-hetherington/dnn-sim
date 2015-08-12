@@ -501,7 +501,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
 
 ######### MAIN ################################################################
 
-script, filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b = sys.argv
+script, filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, Tii = sys.argv
 lookaside = int(lookaside)
 lookahead = int(lookahead)
 out_limit = int(out_limit)
@@ -513,6 +513,8 @@ negatives_are_dups = True
 
 Ti=16
 Tn=16
+Tnn=1024
+Tii=int(Tii)
 
 #print "read filter file"
 # w is an Nn x Ni ndarray of weights
@@ -550,7 +552,7 @@ for key in glob_dups:
 #        print key, glob_dups[key]
 #print "break into chunks"
 # chunks is a list of Nrows * Tn * Ti weights
-(chunks, chunk_idxs) = chunk.chunk(w)
+(chunks, chunk_idxs) = chunk.chunk(w,Nn,Ni,Tnn,Tii,Tn,Ti)
 
 #print "processing each chunk"
 np.set_printoptions(threshold=np.inf)
@@ -568,7 +570,7 @@ for key in buffer:
         #print "left ", i, n
         left += 1
 
-cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, zero_rm, dup_rm, total_dups, total_reduced_rows, total_rows)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, Tii, zero_rm, dup_rm, total_dups, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
