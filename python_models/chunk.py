@@ -4,24 +4,22 @@
 
 import numpy as np
 import math
+import sys
 
-def n_i_to_cycle(n,i,Nn,Ni):
-    Tn = 16
-    Ti = 16
-    Tnn = 1024
-    Tii = 1024
-    
+def n_i_to_cycle(n,i,Nn,Ni,Tnn,Tii,Tn,Ti):
     # one cycles processes Ti inputs and produces Tn outputs
     ii = i/Ti
     nn = n/Tn
-
+    #print Tii
     # think in terms of tiles of rows
-    Rnn = min(Tnn,Nn)/Tn
-    Rii = min(Tii,Ni)/Ti
+    Rnn = int( math.ceil(min(Tnn,Nn+0.0)/Tn) )
+    Rii = int( math.ceil(min(Tii,Ni+0.0)/Ti) ) 
 
     Nri = Ni/Ti
     Nrn = Nn/Tn
+    
 
+    # now everything is in terms of Ti*Tn tiles
 
     # tile indicies (top left corner)
     iii = ii/Rii*Rii
@@ -34,15 +32,13 @@ def n_i_to_cycle(n,i,Nn,Ni):
     # offsets within a tile
     dnn = nn-nnn
     dii = ii-iii
-
+    
+#    print "ii =",ii,"nn =",nn,"Rii =",Rii,"Rnn =",Rnn,"Nri =",Nri,"Nrn =",Nrn,"iii =",iii,"nnn =",nnn,"Hii =",Hii,"Wnn =",Wnn,"dnn =",dnn,"dii =",dii
+#    print nnn,"*",Nri,"+",iii,"*",Rnn,"+",dnn,"*",Hii,"+",dii
     cycle = nnn*Nri + iii*Rnn + dnn*Hii + dii
     return cycle
 
-def chunk(weights):
-    Tn = 16
-    Ti = 16
-    Tnn = 1024
-    Tii = 1024
+def chunk(weights,Nn,Ni,Tnn,Tii,Tn,Ti):
     Nn, Ni = weights.shape
 
     chunks = []
@@ -73,3 +69,24 @@ def chunk(weights):
                 chunks.append(chunk)
                 chunk_idx.append((nn,iii))
     return (chunks, chunk_idx)
+
+# test program
+#Nn=256
+#Ni=1200
+#args = sys.argv
+#script = args.pop(0)
+#Tii = int(args.pop(0))
+#Tnn = 16
+#print "n i c"
+##for n in range(0,Nn,16):
+##    for i in range(0,Ni,16):
+##        c = n_i_to_cycle(n,i,Nn,Ni)
+##        print n/16,i/16,c
+#i=1057
+#n=1
+#c = n_i_to_cycle(n,i,Nn,Ni)
+#print n,i,c
+#n=18
+#c = n_i_to_cycle(n,i,Nn,Ni)
+#print n,i,c
+

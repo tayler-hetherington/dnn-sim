@@ -146,7 +146,7 @@ def main():
 
     # print "break into chunks"
     # chunks is a list of Nrows * Tn * Ti weights
-    chunks = chunk.chunk(w)
+    (chunks, chunk_idxs) = chunk.chunk(w)
 
     # print "processing each chunk"
     for c in chunks:
