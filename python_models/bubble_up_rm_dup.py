@@ -222,53 +222,95 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     #print "chunk:", chunk_n, chunk_i
     zero_rows = 0;
 
-
     # recalculate global index
-
     (R,Tn,Ti) = weights.shape
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
     dup_map = map_duplicates(weights, True)
 
-    out_per_row = [0] * (Ti+1)
-    in_per_row = [0] * (Tn+1)
-    out_res_per_row = [0] * (Ti+1)
-    in_res_per_row = [0] * (Tn+1)
+    out_per_row =       [0] * (Ti+1)
+    in_per_row =        [0] * (Tn+1)
+    out_res_per_row =   [0] * (Ti+1)
+    in_res_per_row =    [0] * (Tn+1)
 
     zero_rm = 0 # number of zeros removed
     dup_rm = 0 # number of dups removed
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
 
-    # iterate in chunk order and save duplicate values
     global glob_dups
     global removed_dups
     global forwarded_dups
     global buffer
     global glob_max_buffer_size 
+    global next_c_dict
+    global n_sets
+    global Tii
+    global Tnn
+
+    # iterate in chunk order and save duplicate values
     for r in range(R):
         for n in range(Tn):
             for i in range(Ti):
                 w = map_weight(weights[r,n,i])
+                
+                # forward buffered products at the beginning of a new output tile
+                #if (i/Tii == 0 and n/Tn == 0):
+                #    # start of new partial sum calculation
+                #    for tw in range(n_ways):
+                #        for ts in range(n_sets):
+                #            for key in buffer[ts][tw].keys():
+                #                for tn in buffer[ts][tw][key]:
+                #                    if tn/Tn == n/Tn:
+                #                        buffer[ts][tw][key].remove(tn)
+                #                if len(buffer[ts][tw][key]) == 0:
+                #                    # get rid of this entry in the buffer
+                #                    #print "deleting", w, gi
+                #                    del buffer[ts][tw][key]
+                #                    del next_c_dict[ts][tw][key]
+                #                else:
+                #                    next_c_dict[ts][tw][key] = calc_buffer_next_reuse(buffer[ts][tw], key)
+                #            
+
                 if (w == 0):
                     continue
 
+                # which set does this 
+                set = i % n_sets
+                way = n % n_ways
+
+                assert len(buffer[set][way].keys()) == len(next_c_dict[set][way].keys())
+
                 (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
+
                 # is this a duplicate?
                 if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
-
+                    #if gi == 0:
+                    #    print "dup: ", gn, gi, w
                     # is the product already in the buffer
-                    if (w,gi) in buffer:
-                        if (gn not in buffer[(w,gi)]):
+                    found_way = -1
+                    for tw in range(n_ways):
+                        if (w,gi) in buffer[set][tw]:
+                            found_way = tw
+
+                    if found_way >= 0:
+                        if (gn not in buffer[set][found_way][(w,gi)]):
                             continue # this product was forwarded by a previous operation
+                        
+                        if gn != buffer[set][found_way][(w,gi)][0]:
+                            print "gn = %d but list[0] = %d" % (gn , buffer[set][found_way][(w,gi)][0])
 
                         # remove current key
-                        buffer[(w,gi)].remove(gn)
+                        buffer[set][found_way][(w,gi)].remove(gn)
                         removed_dups += 1
                         # print "removed",w,gn,gi
                         # have all the duplicates been forwarded?
-                        if len(buffer[(w,gi)]) == 0:
+                        if len(buffer[set][found_way][(w,gi)]) == 0:
                             # get rid of this entry in the buffer
-                            del buffer[(w,gi)]
+                            #print "deleting", w, gi
+                            del buffer[set][found_way][(w,gi)]
+                            del next_c_dict[set][found_way][(w,gi)]
+                        else:
+                            next_c_dict[set][found_way][(w,gi)] = calc_buffer_next_reuse(buffer[set][found_way], (w,gi))
                     else:
                         # product is not stored in the buffer
 
@@ -280,48 +322,65 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
                         # get the remaining duplicates
                         dups = list(glob_dups[(w,gi)][nidx+1:])
-                            
                         # can the duplicates be forwarded this cycle?
-                        for d in dups:
+                        dups_copy = list(dups)
+                        for d in dups_copy:
+                            # duplicates issued this cycle:
                             if gn/Tn == d/Tn:
-                                dups.remove(d)
                                 forwarded_dups += 1
                                 removed_dups += 1
+                                # remove from global dups list 
+                                glob_dups[(w,gi)].remove(d)
+                                dups.remove(d)
+                                #print 'forward', w, gi, d 
+                                weights[r, d % Tn ,i] = 0
+                                #print 'forward', w, gi, gn, '->', d
 
                         if ( len(dups) == 0 ):
                             # all duplicates forwarded
                             continue
 
+                        #continue # no buffering
+                        # if there are still duplicates in the future
                         # add to buffer
                         global buffer_size
 
-                        keys = buffer.keys()
-                        if (len(keys) >= buffer_size):
+                        keys = buffer[set][way].keys()
+                        set_size = buffer_size/n_sets/n_ways;
+                        if (len(keys) >= set_size):
                             # buffer is full
-                            continue # dont evict ever
+                            #continue # dont evict ever
                             
                             # find an eviction candidate
                             # policy: longest next reuse
                             victim_c = -1
                             victim_key = []
+
                             for key in keys:
-                                (kn,ki) = (buffer[key][0],key[1])
-                                next_c = chunk.n_i_to_cycle(kn,ki,Nn,Ni)
+                                (kn,ki) = (buffer[set][way][key][0],key[1])
+                                next_c = next_c_dict[set][way][key]
                                 if next_c > victim_c:
                                     victim_c = next_c
                                     victim_key = key
 #                            print "n =",gn, "evicting", buffer[victim_key]
 
                             # if victim has longer reuse than the current dup, replace it
-                            replacement_c = chunk.n_i_to_cycle(dups[0], gi, Nn, Ni)
+                            replacement_c = chunk.n_i_to_cycle(dups[0], gi, Nn, Ni,Tnn,Tii,Tn,Ti)
                             if (victim_c > replacement_c):
-                                del buffer[victim_key]
+                                #print "deleting", victim_key[0], victim_key[1]
+                                del buffer[set][way][victim_key]
+                                del next_c_dict[set][way][my_hash(victim_key)]
                             else:
                                 continue #don't add replacement to the list
 
-                        buffer[(w,gi)] = dups
-                        glob_max_buffer_size = max(glob_max_buffer_size, len(buffer.keys()))
-
+                        # add buffer entry
+                        #print "adding", w, gi
+                        #dups.pop(0)
+                        buffer[set][way][(w,gi)] = dups
+                        #if gi == 0:
+                        #    print "adding dups to buffer", dups 
+                        next_c_dict[set][way][my_hash((w,gi))] = calc_buffer_next_reuse(buffer[set][way], (w,gi))
+                        glob_max_buffer_size = max(glob_max_buffer_size, len(buffer[set][way].keys()))
                                 
                         
                 
@@ -340,10 +399,10 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
     dup_map = map_duplicates(weights, absolute)
 
-    out_per_row = [0] * (Ti+1)
-    in_per_row = [0] * (Tn+1)
-    out_res_per_row = [0] * (Ti+1)
-    in_res_per_row = [0] * (Tn+1)
+    out_per_row =       [0] * (Ti+1)
+    in_per_row =        [0] * (Tn+1)
+    out_res_per_row =   [0] * (Ti+1)
+    in_res_per_row =    [0] * (Tn+1)
 
     zero_rm = 0 # number of zeros removed
     dup_rm = 0 # number of dups removed
@@ -491,6 +550,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     global total_rows 
     total_rows += R
 
+
     # print weights.any(axis=(1,2)) # print out false if a row is all zero
     #wa = [weights[i,:,:].any() for i in range(weights.shape[0])] # changed for 1.6.1 compatilibility
 
@@ -501,20 +561,24 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
 
 ######### MAIN ################################################################
 
-script, filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, Tii = sys.argv
-lookaside = int(lookaside)
-lookahead = int(lookahead)
-out_limit = int(out_limit)
-in_limit = int(in_limit)
-#buffer_size = int(buffer_size)
-group_size = int(group_size)
-out_b = int(out_b)
+args = sys.argv
+script      = args.pop(0)
+filename    = args.pop(0)
+lookaside   = int(args.pop(0))
+lookahead   = int(args.pop(0))
+out_limit   = int(args.pop(0))
+in_limit    = int(args.pop(0))
+group_size  = int(args.pop(0))
+out_b       = int(args.pop(0))
+buffer_size = int(args.pop(0))
+n_sets      = int(args.pop(0))
+n_ways      = int(args.pop(0))
+Tii         = int(args.pop(0))
 negatives_are_dups = True
 
 Ti=16
 Tn=16
 Tnn=1024
-Tii=int(Tii)
 
 #print "read filter file"
 # w is an Nn x Ni ndarray of weights
@@ -530,27 +594,41 @@ glob_max_buffer_size = 0
 total_dups = 0
 removed_dups = 0
 forwarded_dups = 0
-buffer = {}
 
-add = 0
-for i in range(Ni):
-    for n in range(Nn):
-        weight = map_weight(w[n,i])
-        if (weight == 0):
-            continue
-        if ( not (weight,i) in glob_dups ):
-            glob_dups[(weight,i)] = []
-        else:
-            add += 1
-            #print "add",weight,n,i
+# buffer[set][way]
+buffer = [[{} for i in range(n_ways)] for j in range(n_sets)]
+next_c_dict = [[{} for i in range(n_ways)] for j in range(n_sets)]
 
-        glob_dups[(weight,i)].append(n)
+# generate list of all duplicates in filter
+# use tiling to append n's in execution order
+cycle=0
+for nnn in range(0, Nn, Tnn):
+    for iii in range(0, Ni, Tii):
+        for nn in range(nnn, min(nnn+Tnn,Nn), Tn):
+            for ii in range(iii, min(iii+Tii,Ni), Ti):
+                for n in range(nn, min(nn+Tn,Nn), 1):
+                    for i in range(ii, min(ii+Ti,Ni), 1):
+                        weight = map_weight(w[n,i])
+                        if (weight == 0):
+                            continue
+                        if ( not (weight,i) in glob_dups ):
+                            glob_dups[(weight,i)] = []
+                        glob_dups[(weight,i)].append(n)
+                        #glob_dups[(weight,i)].append((n,cycle))
+                cycle += 1
 
+# delete singletons
+for k in glob_dups.keys():
+    (kw,ki) = k
+    n_list = glob_dups[k]
+    if (len(n_list) == 1):
+        del glob_dups[k]
+        continue
+
+# get total # duplicates
 for key in glob_dups:
-#    print key, len(glob_dups[key]), glob_dups[key]
     total_dups += len(glob_dups[key])-1
-#        print key, glob_dups[key]
-#print "break into chunks"
+
 # chunks is a list of Nrows * Tn * Ti weights
 (chunks, chunk_idxs) = chunk.chunk(w,Nn,Ni,Tnn,Tii,Tn,Ti)
 
@@ -563,14 +641,7 @@ for (c, c_idx) in zip(chunks, chunk_idxs):
     zero_rm += z
     dup_rm += r
 
-left=0
-for key in buffer:
-    (w,i)=key
-    for n in buffer[key]:
-        #print "left ", i, n
-        left += 1
-
-cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, Tii, zero_rm, dup_rm, total_dups, total_reduced_rows, total_rows)
+cols = (filename, lookaside, lookahead, out_limit, in_limit, group_size, out_b, zero_rm, dup_rm, total_dups, total_reduced_rows, total_rows)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, removed_dups, total_dups)
 #cols = (filename, lookaside, lookahead, out_limit, in_limit, forwarded_dups, removed_dups, total_dups, glob_max_buffer_size)
 for c in cols:
