@@ -66,7 +66,7 @@ def map_weight(w):
 
 # creates a map of duplicates within a chunk
 # for each key (r,i, |weights[r,n,i]|) counts the number of duplicates
-def map_duplicates(weights, absolute=False):
+def map_duplicates(weights):
 
     # get dimensions
     (R,Tn,Ti) = weights.shape
@@ -76,43 +76,40 @@ def map_duplicates(weights, absolute=False):
     for r in range(R):
         for n in range(Tn):
             for i in range(Ti):
+                w = map_weight(weights[r,n,i])
 
-               # don't add zeroes
-               if (not weights[r,n,i]):
-                   continue
+                # don't add zeroes
+                if w == 0 :
+                    continue
 
-               # key for this weight and position
-               key = (r,i,weights[r,n,i])
+                # key for this weight and position
+                key = (r, i, w)
 
-               if (absolute):
-                   key = (r,i,abs(weights[r,n,i]))
-
-               if (not dup_map.has_key(key)):
+                if (not dup_map.has_key(key)):
                    dup_map[key] = 0
 
-               dup_map[key] += 1
+                dup_map[key] += 1
 
     return dup_map              
 
-# for a given entry r,n,i scan current row and the original row
-# 
-def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=False):
-
-
+# for a given entry r,n,i scan current row and the producers original row 
+# returns:
+#   dup_index   a list of duplicates that can be removed, doesn't include the producer
+def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
     # get dimensions 
     (R,Tn,Ti) = weights.shape
 
-    # provider's real index and weight
+    # producers's real index and weight
     (pr,pn,pi) = ind[r,n,i]
-    pw = weights[r,n,i]
-    if (absolute):
-        pw = abs(pw)
+    pw = map_weight(weights[r,n,i])
 
     #print "LD: ", (ind[r,n,i]), (r,n,i), " ",  weights[r,n,i]
     # where to look for
     global group_size
     look_in_n = set(range(pn/group_size*group_size,
                           pn/group_size*group_size+group_size))
+
+    # don't consider the producer when looking for consumers
     look_in_n.remove(pn)
 
     dup_index = []
@@ -121,6 +118,7 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=Fals
     if (not dup_map.has_key(dup_key)):
        return dup_index
 
+    # check current row and producers original row
     for rr in (r,pr):
 
         remove_n = set()
@@ -133,9 +131,7 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=Fals
 
                 # get target's real index
                 (dr,dn,di) = ind[rr,nn,ii]
-                dw = weights[rr,nn,ii]
-                if (absolute):
-                    dw = abs(dw)
+                dw = map_weight(weights[rr,nn,ii])
 
                 # found a dup if both the real r, i and weights are the same
                 if (dw == pw and dr == pr and di == pi):
@@ -147,12 +143,20 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute=Fals
 
     return dup_index
 
-# removes duplicates
+# removes duplicates 
+#   inputs:
+#       r,n,i       producer indices in the chunk
+#       weights     chunk of weights to be updated
+#       ind         the original indices of each weight in weights
+#       dup_list    list of (r,n,i) of duplicates to remove, 
+#       out_ctr     counts the stage 1 mux outputs used for each group of n multipliers
+#       in_ctr      counts the stage 2 mux outputs used for each adder tree (n)
+#   returns:
+#       stats       list of stats 
 def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
-
-    dup_rm = 0
-    dup_bubble = 0
-    dup_bubble_pop = 0
+    dup_rm = 0  # duplicates removed
+    dup_bubble = 0  # not used
+    dup_bubble_pop = 0  # not used
     ictr = 0 #input counter (stage 2 collecting mux)
     octr = 0 #output counter (stage 1 broadcasting mux)
 
@@ -164,7 +168,7 @@ def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
         (R,Tn,Ti) = weights.shape
 
         # go through each of them and see if they will accept inputs 
-        output_dup = False
+        output_dup = False # are we broadcasting a duplicate?
         for dup in dup_list:
             (dr,dn,di) = dup
 
@@ -176,11 +180,12 @@ def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
             # reached input limit for this output (adder tree)
             if (in_ctr[dn] == 0):
                continue
-
+    
+            # remove (dr,dn,di)
             #print "Du: ", (r,n,i,weights[r,n,i]), (dr,dn,di,weights[dr,dn,di]) 
             weights[dr,dn,di] = zero()
-            ind[dr,dn,di] = -2 # why -2
-            output_dup = True
+            ind[dr,dn,di] = -2 # why -2, mark as removed?
+            output_dup = True 
             in_ctr[dn] -= 1
             ictr += 1
             dup_rm += 1
@@ -192,6 +197,7 @@ def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
     stat = [dup_rm, dup_bubble, dup_bubble_pop, ictr, octr]
     return stat
 
+# get_global_weight_idx
 # inputs:
 #   chunk index: (n,i) of the first weight in the chunk
 #   chunk offset: r, n, i within the chunk
@@ -203,7 +209,7 @@ def get_global_weight_idx(chunk_n, chunk_i, r, n, i):
     gi = i + ii
     return (gn,gi)
 
-# analyzes duplicates
+# this function analyzes duplicates, but doesn't actually remove them from weights
 def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
     chunk_n, chunk_i = weight_idx
     #print "chunk:", chunk_n, chunk_i
@@ -216,7 +222,7 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
 
     
-    dup_map = map_duplicates(weights, True)
+    dup_map = map_duplicates(weights)
 
     out_per_row =       [0] * (Ti+1)
     in_per_row =        [0] * (Tn+1)
@@ -377,7 +383,8 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
 #################################################################################
 
-def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit, absolute=True):
+# removed duplicates and zeros from a chunk of weights
+def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
 
     chunk_n, chunk_i = weight_idx
     #print "chunk:", chunk_n, chunk_i
@@ -386,11 +393,11 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     # recalculate global index
     (R,Tn,Ti) = weights.shape
 
-    # what does ind do?
+    # store the original indices of each weight in weights
     ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
 
     # this generates a count of the duplicates for each key within the chunk
-    dup_map = map_duplicates(weights, absolute)
+    dup_map = map_duplicates(weights)
 
     out_per_row =       [0] * (Ti+1)
     in_per_row =        [0] * (Tn+1)
@@ -405,17 +412,15 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     global out_b
     global group_size
 
+    # for each row
+    #   while changes
+    #       remove duplicates
+    #       fill zeros
     for r in range(0,R-1):
-    #    print "C:", weights[r,n,:]
-    #    print "N:", weights[r+1,n,:]
         rmax = min(r + lookahead , R-1 )
 
-        # print r, "##############################"
-        # for tr in range(r, rmax + 1):
-            # print_row(weights,tr)
-
         # check for all zeros
-        if (is_zero( weights[r,:,:] ) ):
+        if ( is_zero( weights[r,:,:] ) ):
             # print r # print all lines that are all zeroes
             zero_rows += 1
             continue
@@ -432,6 +437,8 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
         dup_found = set()
 
         # fill bubbles
+        # how are stats maintained across iterations?
+        # are we potentially double promoting beyond the lookahead window?
         while changed:
             changed = False
 
@@ -442,16 +449,14 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
             for n in range(0,Tn):
                 for i in range(0,Ti):
                     # look for duplicates only if we haven't looked at it before
-                    w = weights[r,n,i]
-                    if (absolute):
-                       w = abs(w)
+                    w = map_weight(weights[r,n,i])
                     key = (ind[r,n,i][0], ind[r,n,i][2], w)
-                    if (key not in dup_found and not is_zero(weights[r,n,i])):
+                    if ( key not in dup_found and not is_zero(weights[r,n,i]) ):
 
-                        # dup_index is list of duplicates for (r,n,i)
-                        dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead, absolute)
+                        # dup_index is list of duplicates for (r,n,i) (not including producer)
+                        dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead)
                         dup_found.add(key)
-                        if (dup_index):
+                        if ( len(dup_index) > 0 ):
                             dup_index.append((r,n,i))
                             dup_found_iter.append(dup_index)
                             #print "A ", dup_index, "W ", weights[r,n,i]
@@ -460,6 +465,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
             # reorder the duplicate removal order
             # do the ones with more duplicates first
             dup_found_iter.sort(key=len, reverse=True)
+
             # pick the filter with the least number of duplicates to
             # send first, this should reduce input dependences
             n_ctr = {}
@@ -502,17 +508,28 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                        group_out_ctr[nn/group_size] -= 1
                        break
 
+            # remove duplicates from buffer here
+            # when we forward a buffered duplicate, remove the corresponding weight
+            # this gets lower priority since we can do it any time within the chunk
+            
+            # this may create a zero row, but we can't skip it since we've used this cycle to do all this stuff
 
+
+
+
+            # NOTE: we don't have to check for a row of zeros again, since at least have producers in this row
             # remove all the bubbles in the row
             for n in range(0,Tn):
                 for i in range(0,Ti):
     
                     # fill in the bubble
-                    if (is_zero( weights[r,n,i] )):
+                    if ( is_zero( weights[r,n,i] )):
                         # found a zero to fill, look for replacement
                         (weights, ind, tmp) = re.look_for_replacement( r, n, i, weights, ind, lookaside, lookahead)
                         zero_rm += tmp
                         changed = changed or tmp
+            
+            # add producers to buffer here
    
    
         # end of change loop
@@ -628,7 +645,6 @@ total_dups_per_row = 0
 buffer =        [[{} for i in range(n_ways)] for j in range(n_sets)]
 next_c_dict =   [[{} for i in range(n_ways)] for j in range(n_sets)]
 
-
 glob_dups = build_dups(w)
 
 # get total # duplicates
@@ -647,7 +663,7 @@ zero_rm = 0
 dup_rm = 0
 for (c, c_idx) in zip(chunks, chunk_idxs):
 #    process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
-    (z,r) = process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit, negatives_are_dups)
+    (z,r) = process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit)
     zero_rm += z
     dup_rm += r
 
