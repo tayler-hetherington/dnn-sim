@@ -95,7 +95,7 @@ def map_duplicates(weights):
 # for a given entry r,n,i scan current row and the producers original row 
 # returns:
 #   dup_index   a list of duplicates that can be removed, doesn't include the producer
-def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
+def look_for_duplicates(r, n, i, weights, ind, dup_map):
     # get dimensions 
     (R,Tn,Ti) = weights.shape
 
@@ -154,11 +154,10 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead):
 #   returns:
 #       stats       list of stats 
 def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
-    dup_rm = 0  # duplicates removed
-    dup_bubble = 0  # not used
-    dup_bubble_pop = 0  # not used
+    global ictr, octr
     ictr = 0 #input counter (stage 2 collecting mux)
     octr = 0 #output counter (stage 1 broadcasting mux)
+    dup_rm = 0
 
     # reached output limit for this cycle
     # or can't fill in the bubble
@@ -194,8 +193,7 @@ def remove_duplicates(r, n, i, weights, ind, dup_list, out_ctr, in_ctr):
             out_ctr[n] -= 1
             octr += 1
 
-    stat = [dup_rm, dup_bubble, dup_bubble_pop, ictr, octr]
-    return stat
+    return dup_rm
 
 # get_global_weight_idx
 # inputs:
@@ -383,6 +381,55 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 
 #################################################################################
 
+# returns a list of duplicates in the current chunk
+def look_for_live_dups(weights, ind, r, dup_map, dup_found):
+    dup_found_iter = []
+    # look for duplicates
+    for n in range(0,Tn):
+        for i in range(0,Ti):
+            # look for duplicates only if we haven't looked at it before
+            w = map_weight(weights[r,n,i])
+            key = (ind[r,n,i][0], ind[r,n,i][2], w)
+            if ( key not in dup_found and not is_zero(weights[r,n,i]) ):
+
+                # dup_index is list of duplicates for (r,n,i) (not including producer)
+                dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map)
+                dup_found.add(key)
+                if ( len(dup_index) > 0 ):
+                    dup_index.append((r,n,i))
+                    dup_found_iter.append(dup_index)
+                    #print "A ", dup_index, "W ", weights[r,n,i]
+    return dup_found_iter
+
+# removes the duplicates in dup_found_iter in order, if possible
+def remove_dups(weights, ind, r, dup_found_iter, in_ctr, out_ctr, group_out_ctr):
+    for dup_list in dup_found_iter:
+        # for each set of duplicates
+        # first dup that can be issued (in the current row) will be issued, rest will be removed
+        for index in dup_list:
+
+            # this is the producer
+            (rr,nn,ii) = index 
+
+            # only output if the index is on the current row
+            # producer needs to allocate before consumers are removed
+            if (r != rr):
+               continue   
+
+            # make sure it has not exceeded group's output limit
+            if ( group_out_ctr[nn/group_size] == 0 ):
+               continue
+
+            # remove all other duplicates if possible
+            dup_rm_i = remove_duplicates(rr, nn, ii, weights, ind, dup_list, out_ctr, in_ctr)
+            global dup_rm
+            dup_rm += dup_rm_i
+
+            # exit when a remove succeeded
+            if (dup_rm_i):
+               group_out_ctr[nn/group_size] -= 1
+               break
+
 # removed duplicates and zeros from a chunk of weights
 def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
 
@@ -404,8 +451,6 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     out_res_per_row =   [0] * (Ti+1)
     in_res_per_row =    [0] * (Tn+1)
 
-    zero_rm = 0 # number of zeros removed
-    dup_rm = 0 # number of dups removed
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
 
@@ -434,7 +479,7 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
         ires = 0 # ignore
         ores = 0 # ignore
         changed = True
-        dup_found = set()
+        dup_found = set() # track the duplicates found so we don't double count them
 
         # fill bubbles
         # how are stats maintained across iterations?
@@ -442,24 +487,11 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
         while changed:
             changed = False
 
+            # look for buffered duplicates broadcasting to this row
+
             # list of list of duplicate indicies
             # [[ (r,n,i) ]]
-            dup_found_iter = []
-            # look for duplicates
-            for n in range(0,Tn):
-                for i in range(0,Ti):
-                    # look for duplicates only if we haven't looked at it before
-                    w = map_weight(weights[r,n,i])
-                    key = (ind[r,n,i][0], ind[r,n,i][2], w)
-                    if ( key not in dup_found and not is_zero(weights[r,n,i]) ):
-
-                        # dup_index is list of duplicates for (r,n,i) (not including producer)
-                        dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map, lookahead)
-                        dup_found.add(key)
-                        if ( len(dup_index) > 0 ):
-                            dup_index.append((r,n,i))
-                            dup_found_iter.append(dup_index)
-                            #print "A ", dup_index, "W ", weights[r,n,i]
+            dup_found_iter = look_for_live_dups(weights, ind, r, dup_map, dup_found)
 
             # prioritize removal here
             # reorder the duplicate removal order
@@ -478,44 +510,13 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
 
             # remove duplicates in list order
             #   checking for constraints
-            for dup_list in dup_found_iter:
-                # for each set of duplicates
-                # first dup that can be issued (in the current row) will be issued, rest will be removed
-                for index in dup_list:
-
-                    # this is the producer
-                    (rr,nn,ii) = index 
-
-                    # only output if the index is on the current row
-                    if (r != rr):
-                       continue   
-
-                    # make sure it has not exceeded group's output limit
-                    if ( group_out_ctr[nn/group_size] == 0 ):
-                       continue
- 
-                    # remove all other duplicates if possible
-                    stats = remove_duplicates(rr, nn, ii, weights, ind, dup_list, out_ctr, in_ctr)
-                    [dup_rm_i, dup_bubble_i, dup_bubble_pop_i, ictr_i, octr_i] = stats
-                    dup_rm          += dup_rm_i
-                    dup_bubble      += dup_bubble_i
-                    dup_bubble_pop  += dup_bubble_pop_i
-                    ictr            += ictr_i
-                    octr            += octr_i
-
-                    # exit when a remove succeeded
-                    if (dup_rm_i):
-                       group_out_ctr[nn/group_size] -= 1
-                       break
+            remove_dups(weights, ind, r, dup_found_iter, in_ctr, out_ctr, group_out_ctr)
 
             # remove duplicates from buffer here
             # when we forward a buffered duplicate, remove the corresponding weight
             # this gets lower priority since we can do it any time within the chunk
             
             # this may create a zero row, but we can't skip it since we've used this cycle to do all this stuff
-
-
-
 
             # NOTE: we don't have to check for a row of zeros again, since at least have producers in this row
             # remove all the bubbles in the row
@@ -525,51 +526,24 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                     # fill in the bubble
                     if ( is_zero( weights[r,n,i] )):
                         # found a zero to fill, look for replacement
-                        (weights, ind, tmp) = re.look_for_replacement( r, n, i, weights, ind, lookaside, lookahead)
-                        zero_rm += tmp
-                        changed = changed or tmp
+                        zero_removed = re.look_for_replacement( r, n, i, weights, ind, lookaside, lookahead)
+                        global zero_rm
+                        zero_rm += zero_removed
+                        changed = changed or zero_removed
             
             # add producers to buffer here
    
-   
         # end of change loop
-
-        #out_per_row[octr/max(1,out_limit)] += 1
-        #in_per_row[ictr/max(1,in_limit)] += 1
-        #out_res_per_row[ores/max(1,out_limit)] += 1
-        #in_res_per_row[ires/max(1,in_limit)/Tn] += 1
-
-        # print "--------------------------------"
-        # for tr in range(r, rmax + 1):
-            # print_row(weights,tr)
-
-    # print_filter(weights,n)
-    #print_weights(weights)
 
     # check if the last row is zero
     if (is_zero( weights[R-1,:,:] ) ):
         zero_rows += 1
-
-    #print "row reduction = ", R-zero_rows , "/", R
-    #print "Output Counter: ", out_per_row
-    #print "Input Counter: ", in_per_row
-    #print "Output Res: ", out_res_per_row
-    #print "Input Res: ", in_res_per_row
-    #print "Bubble/Dup/B+D/B+D+P: ", (zero_rm, dup_rm, dup_bubble, dup_bubble_pop)
 
     global total_reduced_rows 
     total_reduced_rows += R - zero_rows
     global total_rows 
     total_rows += R
 
-
-    # print weights.any(axis=(1,2)) # print out false if a row is all zero
-    #wa = [weights[i,:,:].any() for i in range(weights.shape[0])] # changed for 1.6.1 compatilibility
-
-    #ind = ind[wa,:,:]
-    #weights = weights[wa,:,:]
-
-    return (zero_rm, dup_rm)
 
 # generate list of all duplicates in filter
 # use tiling to append n's in execution order
@@ -640,6 +614,10 @@ total_dups = 0 # total number of duplicates not including the original
 removed_dups = 0
 forwarded_dups = 0
 total_dups_per_row = 0
+zero_rm = 0
+dup_rm = 0
+ictr = 0
+octr = 0
 
 # buffer[set][way][(w,i)]->[list of duplicates]
 buffer =        [[{} for i in range(n_ways)] for j in range(n_sets)]
@@ -659,13 +637,9 @@ avg_dup_list_len = float(total_dups)/total_dup_lists
 
 #print "processing each chunk"
 np.set_printoptions(threshold=np.inf)
-zero_rm = 0
-dup_rm = 0
 for (c, c_idx) in zip(chunks, chunk_idxs):
 #    process_weights(c, c_idx, lookaside, lookahead, out_limit, in_limit)
-    (z,r) = process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit)
-    zero_rm += z
-    dup_rm += r
+    process_chunk(c, c_idx, lookaside, lookahead, out_limit, in_limit)
 
 avg_dups_per_row = float(total_dups_per_row)/(total_rows*Ti)
 
