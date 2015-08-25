@@ -1,6 +1,11 @@
 #!/usr/bin/python
 # This script processes a csv of filters for one layer in Caffe
 # this csv is provided by Jorge
+# Todo:
+#   fix buffer organization
+#       can't map to sets via i since non i inputs/weights can be promoted (lookaside) to multiplier (n,i)
+#       for now only use a fully shared buffer
+
 
 import numpy as np
 import sys
@@ -64,6 +69,8 @@ def map_weight(w):
     else:
         return w
 
+
+
 # creates a map of duplicates within a chunk
 # for each key (r,i, |weights[r,n,i]|) counts the number of duplicates
 def map_duplicates(weights):
@@ -110,7 +117,7 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map):
                           pn/group_size*group_size+group_size))
 
     # don't consider the producer when looking for consumers
-    look_in_n.remove(pn)
+    #look_in_n.remove(pn)
 
     dup_index = []
     dup_key = (pr,pi,pw)
@@ -126,7 +133,7 @@ def look_for_duplicates(r, n, i, weights, ind, dup_map):
             for ii in range(Ti):
 
                 # found all the duplicates, return
-                if (len(dup_index) == dup_map[dup_key] - 1):
+                if (len(dup_index) == dup_map[dup_key] ):
                    return dup_index
 
                 # get target's real index
@@ -207,176 +214,203 @@ def get_global_weight_idx(chunk_n, chunk_i, r, n, i):
     gi = i + ii
     return (gn,gi)
 
-# this function analyzes duplicates, but doesn't actually remove them from weights
-def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
-    chunk_n, chunk_i = weight_idx
-    #print "chunk:", chunk_n, chunk_i
-    zero_rows = 0;
+def calc_buffer_next_reuse(buffer, key):
+    (kn,ki) = (buffer[key][0],key[1])
+    return chunk.n_i_to_cycle(kn,ki,Nn,Ni,Tnn,Tii,Tn,Ti)
 
-    # recalculate global index
-    (R,Tn,Ti) = weights.shape
-    global total_rows 
-    total_rows += R
-    ind = np.indices((R,Tn,Ti)).swapaxes(0,3).swapaxes(0,2).swapaxes(0,1)
+# buffer functions
+# I should make a buffer class at some point
 
-    
-    dup_map = map_duplicates(weights)
+# checks if key (w,i) is buffered
+# inputs:   (w,i) buffer key
+# returns:  the way it is stored in or -1 if not found
+def buffer_check(w,i):
+    # which set does this 
+    set = i % n_sets
+    w = map_weight(w)
 
-    out_per_row =       [0] * (Ti+1)
-    in_per_row =        [0] * (Tn+1)
-    out_res_per_row =   [0] * (Ti+1)
-    in_res_per_row =    [0] * (Tn+1)
+    for way in range(n_ways):
+        if (w,i) in buffer[set][way]:
+            return way
+    return -1
 
-    zero_rm = 0 # number of zeros removed
-    dup_rm = 0 # number of dups removed
-    dup_bubble = 0 # ignore
-    dup_bubble_pop = 0 # ignore
-
+# inserts a new product into the buffer
+# inputs    w   weight
+#           gi  global i
+#           gn  global n
+#           n   local n (which 
+# returns   true if buffer was updated
+def buffer_insert(w,gi,gn,n):
     global glob_dups
     global removed_dups
     global forwarded_dups
     global buffer
     global glob_max_buffer_size 
-    global next_c_dict
+    global reuse_cycle
+    global total_dups_per_row
+    global buffer_size
+
+    set = gi % n_sets
+    way = n % n_ways
+
+    # will this product be reused?
+    if (not (w,gi) in glob_dups):
+        print "buffer_insert(%f,%d) not in glob_dups" % (w,gi)
+        sys.exit()
+    try:
+        nidx = glob_dups[(w,gi)].index(gn) 
+    except ValueError:
+        return False
+    if ( nidx == len(glob_dups[(w,gi)])-1 ):
+        # last duplicate in list, don't save
+        return False
+
+    # get the remaining duplicates
+    dups = list(glob_dups[(w,gi)][nidx+1:])
+    # can the duplicates be forwarded this cycle?
+    dups_copy = list(dups)
+    dups_this_row = 0
+    for d in dups_copy:
+        # duplicates issued this chunk:
+        if gn/Tn == d/Tn:
+            forwarded_dups += 1
+            removed_dups += 1
+            dups_this_row += 1
+            # remove from global dups list 
+            glob_dups[(w,gi)].remove(d)
+            dups.remove(d)
+
+    total_dups_per_row += dups_this_row
+
+    if ( len(dups) == 0 ):
+        # all duplicates forwarded
+        return False
+
+    # if there are still duplicates in the future
+    # add to buffer
+
+    keys = buffer[set][way].keys()
+    set_size = buffer_size/n_sets/n_ways;
+    if (len(keys) >= set_size):
+        # buffer is full
+        #continue # dont evict ever
+        
+        # find an eviction candidate
+        # policy: longest next reuse
+        victim_c = -1
+        victim_key = []
+
+        for key in keys:
+            (kn,ki) = (buffer[set][way][key][0],key[1])
+            next_c = reuse_cycle[set][way][key]
+            if next_c > victim_c:
+                victim_c = next_c
+                victim_key = key
+
+        # if victim has longer reuse than the current dup, replace it
+        replacement_c = chunk.n_i_to_cycle(dups[0], gi, Nn, Ni,Tnn,Tii,Tn,Ti)
+        if (victim_c > replacement_c):
+            #print "deleting", victim_key[0], victim_key[1]
+            del buffer[set][way][victim_key]
+            del reuse_cycle[set][way][victim_key]
+        else:
+            return False #don't add replacement to the list
+
+    # update buffer
+    buffer[set][way][(w,gi)] = dups
+    reuse_cycle[set][way][(w,gi)] = calc_buffer_next_reuse(buffer[set][way], (w,gi))
+
+    glob_max_buffer_size = max(glob_max_buffer_size, len(buffer[set][way].keys()))
+    return True
+
+def buffer_reuse(w,gn,gi):
+    global buffer
+    global reuse_cycle
+    global removed_dups
+
+    found_way = buffer_check(w,gi)
+    set = gi % n_sets
+    
+    if ( found_way < 0 ):
+        return False
+
+    if (gn not in buffer[set][found_way][(w,gi)]):
+        return False # this product was forwarded by a previous operation
+
+    # remove current key
+    buffer[set][found_way][(w,gi)].remove(gn)
+    removed_dups += 1
+
+    # have all the duplicates been forwarded?
+    if len(buffer[set][found_way][(w,gi)]) == 0:
+        # get rid of this entry in the buffer
+        del buffer[set][found_way][(w,gi)]
+        del reuse_cycle[set][found_way][(w,gi)]
+    else:
+        # update the next reuse cycle
+        reuse_cycle[set][found_way][(w,gi)] = calc_buffer_next_reuse(buffer[set][found_way], (w,gi))
+    return True
+
+def buffer_update_for_row(weights, weight_idx, r):
+    chunk_n, chunk_i = weight_idx
+
+    # recalculate global index
+    (R,Tn,Ti) = weights.shape
+
+    for n in range(Tn):
+        for i in range(Ti):
+            w = map_weight(weights[r,n,i])
+            
+            # forward buffered products at the beginning of a new output tile
+            #if (i/Tii == 0 and n/Tn == 0):
+            #    # start of new partial sum calculation
+            #    for tw in range(n_ways):
+            #        for ts in range(n_sets):
+            #            for key in buffer[ts][tw].keys():
+            #                for tn in buffer[ts][tw][key]:
+            #                    if tn/Tn == n/Tn:
+            #                        buffer[ts][tw][key].remove(tn)
+            #                if len(buffer[ts][tw][key]) == 0:
+            #                    # get rid of this entry in the buffer
+            #                    #print "deleting", w, gi
+            #                    del buffer[ts][tw][key]
+            #                    del reuse_cycle[ts][tw][key]
+            #                else:
+            #                    reuse_cycle[ts][tw][key] = calc_buffer_next_reuse(buffer[ts][tw], key)
+            #            
+
+            # ignore zero weights
+            if (w == 0):
+                continue
+
+            (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
+
+            # is this a duplicate?
+            if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
+                #if gi == 0:
+                #    print "dup: ", gn, gi, w
+                # is the product already in the buffer
+                found = buffer_reuse(w,gn,gi)
+                if not found:
+                    # product is not stored in the buffer
+                    buffer_insert(w,gi,gn,n)
+
+# this function analyzes duplicates, but doesn't actually remove them from weights
+def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
+
+    # recalculate global index
+    (R,Tn,Ti) = weights.shape
+    global total_rows 
+    total_rows += R
+
+    global zero_rm 
+    global dup_rm 
+    zero_rm = 0 # number of zeros removed
+    dup_rm = 0 # number of dups removed
 
     # iterate in chunk order and save duplicate values
     for r in range(R):
-        for n in range(Tn):
-            for i in range(Ti):
-                w = map_weight(weights[r,n,i])
-                
-                # forward buffered products at the beginning of a new output tile
-                #if (i/Tii == 0 and n/Tn == 0):
-                #    # start of new partial sum calculation
-                #    for tw in range(n_ways):
-                #        for ts in range(n_sets):
-                #            for key in buffer[ts][tw].keys():
-                #                for tn in buffer[ts][tw][key]:
-                #                    if tn/Tn == n/Tn:
-                #                        buffer[ts][tw][key].remove(tn)
-                #                if len(buffer[ts][tw][key]) == 0:
-                #                    # get rid of this entry in the buffer
-                #                    #print "deleting", w, gi
-                #                    del buffer[ts][tw][key]
-                #                    del next_c_dict[ts][tw][key]
-                #                else:
-                #                    next_c_dict[ts][tw][key] = calc_buffer_next_reuse(buffer[ts][tw], key)
-                #            
-
-                if (w == 0):
-                    continue
-
-                # which set does this 
-                set = i % n_sets
-                way = n % n_ways
-
-                assert len(buffer[set][way].keys()) == len(next_c_dict[set][way].keys())
-
-                (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, r, n, i)
-
-                # is this a duplicate?
-                if ( (w,gi) in glob_dups and len(glob_dups[(w,gi)]) > 1):
-                    #if gi == 0:
-                    #    print "dup: ", gn, gi, w
-                    # is the product already in the buffer
-                    found_way = -1
-                    for tw in range(n_ways):
-                        if (w,gi) in buffer[set][tw]:
-                            found_way = tw
-
-                    if found_way >= 0:
-                        if (gn not in buffer[set][found_way][(w,gi)]):
-                            continue # this product was forwarded by a previous operation
-                        
-                        if gn != buffer[set][found_way][(w,gi)][0]:
-                            print "gn = %d but list[0] = %d" % (gn , buffer[set][found_way][(w,gi)][0])
-
-                        # remove current key
-                        buffer[set][found_way][(w,gi)].remove(gn)
-                        removed_dups += 1
-                        # print "removed",w,gn,gi
-                        # have all the duplicates been forwarded?
-                        if len(buffer[set][found_way][(w,gi)]) == 0:
-                            # get rid of this entry in the buffer
-                            #print "deleting", w, gi
-                            del buffer[set][found_way][(w,gi)]
-                            del next_c_dict[set][found_way][(w,gi)]
-                        else:
-                            next_c_dict[set][found_way][(w,gi)] = calc_buffer_next_reuse(buffer[set][found_way], (w,gi))
-                    else:
-                        # product is not stored in the buffer
-
-                        # will this product be reused?
-                        nidx = glob_dups[(w,gi)].index(gn) 
-                        if ( nidx == len(glob_dups[(w,gi)])-1 ):
-                            # last duplicate in list, don't save
-                            continue
-
-                        # get the remaining duplicates
-                        dups = list(glob_dups[(w,gi)][nidx+1:])
-                        # can the duplicates be forwarded this cycle?
-                        dups_copy = list(dups)
-                        dups_this_row = 0
-                        for d in dups_copy:
-                            # duplicates issued this cycle:
-                            if gn/Tn == d/Tn:
-                                forwarded_dups += 1
-                                removed_dups += 1
-                                dups_this_row += 1
-                                # remove from global dups list 
-                                glob_dups[(w,gi)].remove(d)
-                                dups.remove(d)
-                                #print 'forward', w, gi, d 
-                                weights[r, d % Tn ,i] = 0
-                                #print 'forward', w, gi, gn, '->', d
-
-                        global total_dups_per_row
-                        total_dups_per_row += dups_this_row
-                        if ( len(dups) == 0 ):
-                            # all duplicates forwarded
-                            continue
-
-                        #continue # no buffering
-                        # if there are still duplicates in the future
-                        # add to buffer
-                        global buffer_size
-
-                        keys = buffer[set][way].keys()
-                        set_size = buffer_size/n_sets/n_ways;
-                        if (len(keys) >= set_size):
-                            # buffer is full
-                            #continue # dont evict ever
-                            
-                            # find an eviction candidate
-                            # policy: longest next reuse
-                            victim_c = -1
-                            victim_key = []
-
-                            for key in keys:
-                                (kn,ki) = (buffer[set][way][key][0],key[1])
-                                next_c = next_c_dict[set][way][key]
-                                if next_c > victim_c:
-                                    victim_c = next_c
-                                    victim_key = key
-#                            print "n =",gn, "evicting", buffer[victim_key]
-
-                            # if victim has longer reuse than the current dup, replace it
-                            replacement_c = chunk.n_i_to_cycle(dups[0], gi, Nn, Ni,Tnn,Tii,Tn,Ti)
-                            if (victim_c > replacement_c):
-                                #print "deleting", victim_key[0], victim_key[1]
-                                del buffer[set][way][victim_key]
-                                del next_c_dict[set][way][my_hash(victim_key)]
-                            else:
-                                continue #don't add replacement to the list
-
-                        # add buffer entry
-                        #print "adding", w, gi
-                        #dups.pop(0)
-                        buffer[set][way][(w,gi)] = dups
-                        #if gi == 0:
-                        #    print "adding dups to buffer", dups 
-                        next_c_dict[set][way][my_hash((w,gi))] = calc_buffer_next_reuse(buffer[set][way], (w,gi))
-                        glob_max_buffer_size = max(glob_max_buffer_size, len(buffer[set][way].keys()))
+        buffer_update_for_row(weights, weight_idx, r)
     return
 
 #################################################################################
@@ -384,7 +418,6 @@ def process_weights(weights, weight_idx, lookaside, lookahead, out_limit, in_lim
 # returns a list of duplicates in the current chunk
 def look_for_live_dups(weights, ind, r, dup_map, dup_found):
     dup_found_iter = []
-    # look for duplicates
     for n in range(0,Tn):
         for i in range(0,Ti):
             # look for duplicates only if we haven't looked at it before
@@ -392,13 +425,12 @@ def look_for_live_dups(weights, ind, r, dup_map, dup_found):
             key = (ind[r,n,i][0], ind[r,n,i][2], w)
             if ( key not in dup_found and not is_zero(weights[r,n,i]) ):
 
-                # dup_index is list of duplicates for (r,n,i) (not including producer)
+                # dup_index is list of duplicates for (r,n,i) 
                 dup_index = look_for_duplicates(r, n, i, weights, ind, dup_map)
                 dup_found.add(key)
                 if ( len(dup_index) > 0 ):
-                    dup_index.append((r,n,i))
                     dup_found_iter.append(dup_index)
-                    #print "A ", dup_index, "W ", weights[r,n,i]
+
     return dup_found_iter
 
 # removes the duplicates in dup_found_iter in order, if possible
@@ -434,7 +466,7 @@ def remove_dups(weights, ind, r, dup_found_iter, in_ctr, out_ctr, group_out_ctr)
 def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit):
 
     chunk_n, chunk_i = weight_idx
-    #print "chunk:", chunk_n, chunk_i
+
     zero_rows = 0;
 
     # recalculate global index
@@ -446,23 +478,18 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
     # this generates a count of the duplicates for each key within the chunk
     dup_map = map_duplicates(weights)
 
-    out_per_row =       [0] * (Ti+1)
-    in_per_row =        [0] * (Tn+1)
-    out_res_per_row =   [0] * (Ti+1)
-    in_res_per_row =    [0] * (Tn+1)
-
     dup_bubble = 0 # ignore
     dup_bubble_pop = 0 # ignore
 
     global out_b
     global group_size
+    global glob_dups
 
     # for each row
     #   while changes
     #       remove duplicates
     #       fill zeros
-    for r in range(0,R-1):
-        rmax = min(r + lookahead , R-1 )
+    for r in range(0,R):
 
         # check for all zeros
         if ( is_zero( weights[r,:,:] ) ):
@@ -493,6 +520,27 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
             # [[ (r,n,i) ]]
             dup_found_iter = look_for_live_dups(weights, ind, r, dup_map, dup_found)
 
+            # for testing
+            # buffer[0][0][(map_weight(weights[0,0,0]),0)] = [0]
+            for dup_set in dup_found_iter[:]:
+                (cr,cn,ci) = dup_set[0]
+                w = weights[cr,cn,ci]
+            
+                (orig_r, orig_n, orig_i) = ind[cr,cn,ci]
+                (gn,gi) = get_global_weight_idx(chunk_n, chunk_i, orig_r, orig_n, orig_i)
+                way =  buffer_check(w,gi)
+
+                # add buffered duplicates to list as (-1,way,set) 
+                if ( way >= 0 ):
+                    s = gi % n_sets
+                    dup_set.append( (-1,way,s) )
+
+                # remove singletons 
+                if (len(dup_set) == 1):
+                    dup_found_iter.remove(dup_set) 
+
+            # look for buffered duplicates
+
             # prioritize removal here
             # reorder the duplicate removal order
             # do the ones with more duplicates first
@@ -512,10 +560,6 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
             #   checking for constraints
             remove_dups(weights, ind, r, dup_found_iter, in_ctr, out_ctr, group_out_ctr)
 
-            # remove duplicates from buffer here
-            # when we forward a buffered duplicate, remove the corresponding weight
-            # this gets lower priority since we can do it any time within the chunk
-            
             # this may create a zero row, but we can't skip it since we've used this cycle to do all this stuff
 
             # NOTE: we don't have to check for a row of zeros again, since at least have producers in this row
@@ -530,10 +574,17 @@ def process_chunk(weights, weight_idx, lookaside, lookahead, out_limit, in_limit
                         global zero_rm
                         zero_rm += zero_removed
                         changed = changed or zero_removed
-            
-            # add producers to buffer here
    
         # end of change loop
+
+        # now we know which products will be calculated this cycle
+
+        # for all buffered dups that were not forwarded, remove them from the buffer list
+
+        # update the buffer with new products produced in this cycle (row)
+        buffer_update_for_row(weights, weight_idx, r)
+
+    # end of row loop
 
     # check if the last row is zero
     if (is_zero( weights[R-1,:,:] ) ):
@@ -621,7 +672,7 @@ octr = 0
 
 # buffer[set][way][(w,i)]->[list of duplicates]
 buffer =        [[{} for i in range(n_ways)] for j in range(n_sets)]
-next_c_dict =   [[{} for i in range(n_ways)] for j in range(n_sets)]
+reuse_cycle =   [[{} for i in range(n_ways)] for j in range(n_sets)]
 
 glob_dups = build_dups(w)
 
