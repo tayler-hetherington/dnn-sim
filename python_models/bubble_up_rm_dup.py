@@ -356,8 +356,11 @@ def buffer_clear(gn,gi):
                 weight,i=key
                 while i/Ti == gi/Ti and len(buffer[s][w][key]) and buffer[s][w][key][0]/Tn == gn/Tn:
                     buffer[s][w][key].pop(0)
-                if len(buffer[s][w][key]):
+                if len(buffer[s][w][key]) > 0:
                     reuse_cycle[s][w][key] = calc_buffer_next_reuse(buffer[s][w], key)
+                else:
+                    del buffer[s][w][key]
+                    del reuse_cycle[s][w][key]
 
 def buffer_update_for_row(weights, weight_idx, r):
     global buffer
