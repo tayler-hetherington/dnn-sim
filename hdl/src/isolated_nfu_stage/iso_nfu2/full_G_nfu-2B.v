@@ -558,14 +558,14 @@ module nfu_2B (
         for(i=0; i<G; i=i+1) begin : ADDER_TREES
            
            
-            /*
+            
             N1M1_adder_tree N1M1 (
                 i_inputs[ ((i+1)*Tn*BIT_WIDTH) - 1  : (i*Tn*BIT_WIDTH)  ],
                 i_mux_inputs[ (i+1)*IN_LIMIT*BIT_WIDTH - 1 : i*IN_LIMIT*BIT_WIDTH ],
                 i_partial_sum[ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ],
                 o_nfu2_out [ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ]
             );
-            */
+            
             
             
             /*
@@ -577,13 +577,14 @@ module nfu_2B (
             );
             */
 
-           
+            /* 
             N2M4_adder_tree N2M4 (
                 i_inputs[ ((i+1)*Tn*BIT_WIDTH) - 1  : (i*Tn*BIT_WIDTH)  ],
                 i_mux_inputs[ (i+1)*IN_LIMIT*BIT_WIDTH - 1 : i*IN_LIMIT*BIT_WIDTH ],
                 i_partial_sum[ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ],
                 o_nfu2_out [ ((i+1)*BIT_WIDTH) - 1  : (i*BIT_WIDTH) ]
             );
+            */
             
 
            

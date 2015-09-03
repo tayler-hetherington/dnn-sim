@@ -23,6 +23,8 @@ module unpacker (
     input [SHIFT_BITS-1:0]  i_s;    // shift width
     output [BIT_WIDTH-1:0]  o_out;
 
+    
+    wire [2*BIT_WIDTH-1:0]   s_o;
     reg [2*BIT_WIDTH-1:0]    r;      // unpacking register
 
     always@(posedge clk) begin
@@ -31,5 +33,9 @@ module unpacker (
         if (i_load[0]) 
             r[BIT_WIDTH-1:0] <= i_in;
     end
-    shifter #(SHIFT_BITS) bs(.in(r), .shift(i_s), .out(o_out) );
+    //shifter #(.CTRL(SHIFT_BITS)) bs(.in(r), .shift(i_s), .out(o_out) );
+    shifter #(.CTRL(SHIFT_BITS)) bs(.in(r), .shift(i_s), .out(s_o) );
+
+    assign o_out = s_o[BIT_WIDTH-1:0];
+
 endmodule

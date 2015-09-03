@@ -29,7 +29,13 @@ module packer (
     reg [2*BIT_WIDTH-1:0]    r;          // packing register
     wire [2*BIT_WIDTH-1:0]    r_in;      
 
-    shifter #(SHIFT_BITS,2*BIT_WIDTH) bs( .in(i_in), .shift(i_s), .out(r_in) );
+
+    // Larger width wire for input
+    wire [2*BIT_WIDTH - 1 : 0] in;
+    
+    assign in = 16'h0000 & i_in;
+
+    shifter #(.CTRL(SHIFT_BITS),.WIDTH(2*BIT_WIDTH)) bs( .in(in), .shift(i_s), .out(r_in) );
 
     // use seperate enables for each bit
     genvar j;

@@ -8,7 +8,7 @@
 //----------------------------------------------//
 
 
-
+//---------------- D3W4
 module nfu_1A_D3_W4 (
         i_cur_inputs,
         i_repl_cands,
@@ -100,7 +100,135 @@ module nfu_1A_D3_W4 (
 
 endmodule
 
+
+module mux_9_to_1 (
+            i_sel_lines,
+            i_input_1,
+            i_input_8,  
+            o_output
+    );
+
+    parameter BIT_WIDTH = 16;
+    parameter SEL_WIDTH = 4;
+
+
+    input [ 8*BIT_WIDTH-1 : 0 ] i_input_8;
+    input [ BIT_WIDTH-1 : 0 ] i_input_1;
+
+    input [SEL_WIDTH-1:0] i_sel_lines;
+
+    output [ BIT_WIDTH-1 : 0 ] o_output;
+
+    wire [BIT_WIDTH-1:0] mux_8_out;
+
+    mux_8_to_1_v2 M0 (
+        i_sel_lines[ (SEL_WIDTH-2) : 0 ],
+        i_input_8,
+        mux_8_out
+    );
+
+    mux_2_to_1_v2 M1 (
+        i_sel_lines[SEL_WIDTH-1:SEL_WIDTH-1],
+        {i_input_1, mux_8_out},
+        o_output
+    );
     
+
+endmodule
+
+// ------------- D2W3
+
+module nfu_1A_D2_W3 (
+        i_cur_inputs,
+        i_repl_cands,
+        i_sel_lines,
+        o_nfu1B_out          
+    );
+
+    parameter BIT_WIDTH = 16;
+    parameter Tn = 16;
+    parameter TnxTn = 256;
+    parameter D = 2;
+    parameter W = 3;
+    parameter W_DIV2_H = 1;
+    parameter W_DIV2_L = 2;
+
+
+    parameter NUM_REPL_CANDS = D*(W+1); 
+
+    parameter SEL_WIDTH = 4;
+    parameter NUM_MUX_INPUTS = (1 << SEL_WIDTH);
+    
+    //------------ Inputs ------------//
+    input [ (BIT_WIDTH*Tn) - 1 : 0 ]        i_cur_inputs;
+    input [ (BIT_WIDTH*Tn*D) - 1 : 0 ]      i_repl_cands;
+    input [ (SEL_WIDTH*TnxTn) - 1 : 0 ]     i_sel_lines;
+
+    //------------ Outputs ------------//
+    output [ (BIT_WIDTH*TnxTn) - 1 : 0 ]    o_nfu1B_out;
+
+
+    //------------ Internals ------------//
+    
+    
+    //------------- Code Start -------------//
+    genvar i, j;
+    generate
+        for(i=0; i<Tn; i=i+1) begin : l1
+            // For each current input neruon, need to generate Tn multiplexers with the same 
+            // inputs but different select lines / outputs
+            
+            for(j=0; j<Tn; j=j+1) begin : l2
+
+                //if ( ((i-W_DIV2_L) >= 0) && ((i+W_DIV2_H) < Tn)) begin
+                if ( (i >= W_DIV2_L) && ( (i+W_DIV2_H) < Tn) ) begin : l2a
+                    // No overflow at the edges
+                    mux_9_to_1 M0 (
+                        i_sel_lines[ ((i*Tn) + j + 1)*SEL_WIDTH - 1 :  ((i*Tn) + j)*SEL_WIDTH  ],   // Select lines
+                        // Input bus
+                        i_cur_inputs[ (i + 1)*BIT_WIDTH - 1 : i*BIT_WIDTH ], 
+                        // Replacement candidates
+                        i_repl_cands[ (i + 1 + W_DIV2_H)*D*BIT_WIDTH - 1 : (i - W_DIV2_L)*BIT_WIDTH*D ], 
+                        o_nfu1B_out[ ((i*Tn) + j + 1)*BIT_WIDTH - 1 : ((i*Tn) + j)*BIT_WIDTH ]      // Output bus slice
+                    );
+                end
+                else if ( i < W_DIV2_L) begin : l2b
+                    // Overflow at the front
+                    mux_9_to_1 M1 (
+                        i_sel_lines[ ((i*Tn) + j + 1)*SEL_WIDTH - 1 :  ((i*Tn) + j)*SEL_WIDTH  ],   // Select lines
+                        // Input bus
+                        i_cur_inputs[ (i + 1)*BIT_WIDTH - 1 : i*BIT_WIDTH ], 
+                        {
+                            // Replacement candidates
+                            i_repl_cands[ (i + 1 + W_DIV2_H)*D*BIT_WIDTH - 1 : 0 ], 
+                            i_repl_cands[ (Tn*D*BIT_WIDTH) - 1 : (((i-W_DIV2_L)*D) + Tn*D)*BIT_WIDTH ]
+                        },
+
+                        o_nfu1B_out[ ((i*Tn) + j + 1)*BIT_WIDTH - 1 : ((i*Tn) + j)*BIT_WIDTH ]      // Output bus slice
+                    );
+
+                end
+                else begin : l2c
+                    // Overflow at the end
+                    mux_9_to_1 M2 (
+                        i_sel_lines[ ((i*Tn) + j + 1)*SEL_WIDTH - 1 :  ((i*Tn) + j)*SEL_WIDTH  ],   // Select lines
+                        // Input bus
+                        i_cur_inputs[ (i + 1)*BIT_WIDTH - 1 : i*BIT_WIDTH ], 
+                        {                         
+                            // Replacement candidates
+                            i_repl_cands[ (((i+1+W_DIV2_H)*D) % (Tn*D)) * BIT_WIDTH - 1 : 0 ], 
+                            i_repl_cands[ (Tn*D*BIT_WIDTH) - 1 : (i - W_DIV2_L)*BIT_WIDTH*D ]
+                        },
+                        o_nfu1B_out[ ((i*Tn) + j + 1)*BIT_WIDTH - 1 : ((i*Tn) + j)*BIT_WIDTH ]      // Output bus slice
+                    );
+                end
+            end
+        end
+    endgenerate
+
+endmodule
+
+// ---------------- D1W0
 
 module nfu_1A_D1_W0 (
         i_cur_inputs,

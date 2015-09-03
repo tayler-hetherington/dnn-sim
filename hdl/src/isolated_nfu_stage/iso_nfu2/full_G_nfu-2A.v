@@ -179,7 +179,7 @@ module mux_mod (
     parameter Tn = 16;
 
    
-    
+    /*
     // OUT_LIMIT = 2
     // IN_LIMIT = 1
     //      # inputs = (Tn-1)*OUT_LIMIT [muxes]
@@ -205,13 +205,12 @@ module mux_mod (
         },
         o_outputs
     );
-
+    */
     //-------------------------------------------------//
     //-------------------------------------------------//
     //-------------------------------------------------//
 
 
-    /*
     // OUT_LIMIT = 1
     // IN_LIMIT = 1
        // # inputs = (4-1)*OUT_LIMIT => 3; 
@@ -232,6 +231,5 @@ module mux_mod (
         },
         o_outputs
     );
-    */
 
 endmodule
