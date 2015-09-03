@@ -33,7 +33,7 @@ module packer (
     // Larger width wire for input
     wire [2*BIT_WIDTH - 1 : 0] in;
     
-    assign in = 16'h0000 & i_in;
+    assign in = {16'h0000, i_in};
 
     shifter #(.CTRL(SHIFT_BITS),.WIDTH(2*BIT_WIDTH)) bs( .in(in), .shift(i_s), .out(r_in) );
 

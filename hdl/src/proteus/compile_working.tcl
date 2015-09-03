@@ -11,6 +11,7 @@ set my_verilog_files [list ../common.v ../integer_ops/int_add.v ../integer_ops/i
 
 #/* Top-level Module                               */
 set my_toplevel proteus_top_pipeline
+#set my_toplevel base_top_pipeline
 
 #/* The name of the clock pin. If no clock-pin     */
 #/* exists, pick anything                          */
