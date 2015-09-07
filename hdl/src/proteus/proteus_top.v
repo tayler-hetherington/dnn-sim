@@ -23,6 +23,7 @@ module proteus_top_pipeline (
         i_s,
         i_n,
         i_se,
+        i_ze,
         i_z,
         i_nbout_load,
         i_nbout_row_sel,
@@ -63,6 +64,7 @@ module proteus_top_pipeline (
     input [SHIFT_BITS-1:0]  i_s;
     input [SHIFT_BITS-2:0]  i_n;
     input [BIT_WIDTH-1:0]   i_se;
+    input [BIT_WIDTH-1:0]   i_ze;
 
     input [BIT_WIDTH-1:0]   i_z;
 
@@ -100,7 +102,8 @@ module proteus_top_pipeline (
     // Main pipeline registers
     reg [((BIT_WIDTH*TnxTn) - 1):0]     nfu1_nfu2_pipe_reg;
     reg [ (BIT_WIDTH*Tn) - 1 : 0 ]      nfu2_nfu3_pipe_reg;
-    
+   
+    reg [ (BIT_WIDTH*Tn) - 1 : 0 ]     nfu3_out_reg;
     
     //------------- Code Start -----------------//
 
@@ -113,6 +116,20 @@ module proteus_top_pipeline (
     genvar i;
     generate
         for(i=0; i<Tn; i=i+1) begin : nb_unpack_gen
+
+            // Bug fix for unpacker
+            nbin_unpacker_v2 nb_unpk_v2 (
+                .clk(clk),
+                .i_in(nb_in_reg[(i+1)*BIT_WIDTH - 1 : i*BIT_WIDTH] ),
+                .i_load(i_load),
+                .i_s(i_s),
+                .i_n(i_n),
+                .i_se(i_se),
+                .i_ze(i_ze),
+                .o_out(nbin_unpk_out[(i+1)*BIT_WIDTH - 1: i*BIT_WIDTH])
+            );                  
+
+            /*
             nbin_unpacker nb_unpk (
                 .clk(clk),
                 .i_in(nb_in_reg[(i+1)*BIT_WIDTH - 1 : i*BIT_WIDTH] ),
@@ -121,7 +138,8 @@ module proteus_top_pipeline (
                 .i_n(i_n),
                 .i_se(i_se),
                 .o_out(nbin_unpk_out[(i+1)*BIT_WIDTH - 1: i*BIT_WIDTH])
-            );           
+            );
+            */
         end
     endgenerate
 
@@ -153,19 +171,20 @@ module proteus_top_pipeline (
         end
     endgenerate
 
-    assign nbout_to_packer = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
+    //assign nbout_to_packer = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
+    assign nbout_to_packer = nfu3_out_reg;
 
     assign  o_nbout_packer_to_mem = out_wire;
     
     //--------------------------------------------------// 
     //-------------- Main Pipeline Stages --------------//
-    //--------------------------------------------------// 
-    // NFU-1
-    nfu_1 n1 (clk, nbin_unpk_out, sb_unpk_out, nfu1_out);
+    //--------------------------------------------------//
+    // NFU-1 (3 internal pipeline stages)
+    nfu_1_pipe n1 (clk, nbin_unpk_out, sb_unpk_out, nfu1_out);
 
-    // NFU-2
-    nfu_2 n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nfu2_out);
-    
+    // NFU-2 (2 internal pipeline stages)
+    nfu_2_pipe n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nfu2_out);
+
     // NFU-3
     nfu_3 n3(clk, nfu2_nfu3_pipe_reg, i_sigmoid_coef, i_load_sigmoid_coef, nfu3_out);
     //--------------------------------------------------// 
@@ -184,6 +203,8 @@ module proteus_top_pipeline (
         end
         
         nfu1_nfu2_pipe_reg <= nfu1_out;
+    
+        nfu3_out_reg <= (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
     end
 
     //--------------------------------------------------// 
@@ -251,6 +272,8 @@ module base_top_pipeline (
     // Main pipeline registers
     reg [((BIT_WIDTH*TnxTn) - 1):0]     nfu1_nfu2_pipe_reg;
     reg [ (BIT_WIDTH*Tn) - 1 : 0 ]      nfu2_nfu3_pipe_reg;
+
+    reg [(BIT_WIDTH*Tn) - 1 : 0]        nfu3_out_reg;
     
     
     //------------- Code Start -----------------//
@@ -258,24 +281,21 @@ module base_top_pipeline (
     // Depending on current state, either write NFU-2 partial sum 
     // or NFU-3 final results to NBout
     
-    // This should be going to NBout (unpacked) and then have a separate module for doing
-    // the packing after NBout. However, NBout isn't modelled, so just do the packing here
-    // to account for the extra hardware. 
-    assign o_to_nbout = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
+    assign o_to_nbout = nfu3_out_reg;
 
     
     //--------------------------------------------------// 
     //-------------- Main Pipeline Stages --------------//
     //--------------------------------------------------// 
     
-    // NFU-1
-    nfu_1 n1 (clk, nb_in_reg, sb_reg, nfu1_out);
+    // NFU-1 (3 internal pipeline stages)
+    nfu_1_pipe n1 (clk, nb_in_reg, sb_reg, nfu1_out);
 
 
-    // NFU-2
-    nfu_2 n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nfu2_out);
+    // NFU-2 (2 internal pipeline stages)
+    nfu_2_pipe n2(clk, nfu1_nfu2_pipe_reg, nfu2_nfu3_pipe_reg, nfu2_out);
     
-    // NFU-3
+    // NFU-3 (baseline already has 3 pipe stages)
     nfu_3 n3(clk, nfu2_nfu3_pipe_reg, i_sigmoid_coef, i_load_sigmoid_coef, nfu3_out);
     
     
@@ -293,6 +313,8 @@ module base_top_pipeline (
         end
         
         nfu1_nfu2_pipe_reg <= nfu1_out;
+
+        nfu3_out_reg <= (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
     end
 
     //--------------------------------------------------// 

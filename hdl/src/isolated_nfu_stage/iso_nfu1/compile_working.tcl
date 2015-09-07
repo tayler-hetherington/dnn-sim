@@ -7,13 +7,17 @@
 #/**************************************************/
 
 #/* All verilog files, separated by spaces         */
-set my_verilog_files [list ../common.v ../integer_ops/int_add.v ../integer_ops/int_mult.v ./nfu-1A.v ./nfu-1B.v ./top.v ]
+#set my_verilog_files [list ../../common.v ../../integer_ops/int_add.v ../../fixed_point_ops/qtwosComp.v ../../fixed_point_ops/qmult.v ../../integer_ops/int_mult.v ./nfu-1-pipe.v ./mult_piped.v ./nfu-1A.v ./nfu-1B.v ./top.v ]
+set my_verilog_files [list ../../common.v ../../integer_ops/int_add.v ../../fixed_point_ops/qtwosComp.v ../../fixed_point_ops/qmult.v ./nfu-1-pipe.v ./mult_piped.v ./top.v ]
+
+
 #set my_verilog_files [list mux.v top.v ]
 
 
 
 #/* Top-level Module                               */
-set my_toplevel top_level_base
+#set my_toplevel top_level_base
+set my_toplevel top_level_pipelined
 
 #nfu_1A_D1_W0
 
@@ -22,7 +26,7 @@ set my_toplevel top_level_base
 set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization       */
-set my_clk_freq_MHz 500.0
+set my_clk_freq_MHz 1000.0
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 #set my_input_delay_ns 0.1
@@ -98,9 +102,9 @@ set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -base_clock $my_
 #set_input_delay $my_input_delay_ns -reference_pin clk [remove_from_collection [all_inputs] clk]
 #set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
 
-quit
+set_dont_touch_network clk
 
-compile_ultra -no_seq_output_inversion
+compile_ultra -retime -no_seq_output_inversion
 
 #compile -area_effor high
 
@@ -126,6 +130,8 @@ write -f db -hier -output $filename -xg_force_db
 redirect timing.rep { report_timing }
 redirect cell.rep { report_cell }
 redirect power.rep { report_power }
+
+redirect fanout_net.rep { report_net_fanout -high_fanout }
 
 report_units
 

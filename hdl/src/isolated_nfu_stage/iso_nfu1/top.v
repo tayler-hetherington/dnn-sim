@@ -220,4 +220,74 @@ endmodule // End module top_pipelin
 
 
 
+module top_level_pipelined (
+        clk,                    // Main clock
+        i_inputs,               // Inputs from NBin
+        i_synapses,             // Inputs from SB
+        o_outputs
+    );
+
+    parameter BIT_WIDTH = 16;
+
+    
+    parameter Tn = 16;
+    parameter TnxTn = 256;
+    
+    /*
+    parameter Tn = 2;
+    parameter TnxTn = 4;
+    */
+    //----------- Input Ports ---------------//
+    input                               clk;
+
+    // i_inputs is a vector of Tn (16) values, 16-bits each
+    input [((BIT_WIDTH*TnxTn) - 1):0]      i_inputs;
+
+
+    // i_synapses is a matrix of Tn x Tn (16x16=256) values, 16-bits each (Row-major).
+    input [((BIT_WIDTH*TnxTn) - 1):0]   i_synapses;
+
+    //----------- Output Ports ---------------//
+    output [((BIT_WIDTH*TnxTn) - 1):0]     o_outputs;
+
+
+    //----------- Internal Signals --------------//
+    // Wires
+    wire [((BIT_WIDTH*TnxTn) - 1):0]    nfu1_out;
+
+    // Registers
+    // NBin register for current inputs
+    reg [ (BIT_WIDTH*TnxTn) - 1 : 0 ]      nb_in_reg;
+
+    // SB register for current synapses
+    reg [((BIT_WIDTH*TnxTn) - 1):0]     sb_reg;
+    
+    // Main pipeline registers
+    reg [((BIT_WIDTH*TnxTn) - 1):0]     nfu1_out_reg;
+    
+    
+    //------------- Code Start -----------------//
+    assign o_outputs = nfu1_out_reg;
+    
+    //--------------------------------------------------// 
+    //-------------- Main Pipeline Stages --------------//
+    //--------------------------------------------------// 
+    // NFU-1
+    nfu_1_pipe #(.Tn(Tn), .TnxTn(TnxTn)) n1_pipe (clk, nb_in_reg, sb_reg, nfu1_out);
+    
+    
+    always @(posedge clk) begin
+        // Load the inputs from the SRAMs to the internal registers
+        nb_in_reg <= i_inputs;
+        sb_reg <= i_synapses;
+
+        nfu1_out_reg <= nfu1_out;
+    end
+
+    //--------------------------------------------------// 
+    //--------------------------------------------------// 
+    //--------------------------------------------------//
+
+endmodule // End module top_pipeline
+
 

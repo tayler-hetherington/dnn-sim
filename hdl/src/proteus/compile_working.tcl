@@ -7,18 +7,18 @@
 #/**************************************************/
 
 #/* All verilog files, separated by spaces         */
-set my_verilog_files [list ../common.v ../integer_ops/int_add.v ../integer_ops/int_mult.v ../nfu-1B.v ../nfu-2B.v ../nfu-3.v shifter.v rounder.v packer.v unpacker.v sb_unpacker.v nbin_unpacker.v nbout_packer.v ./proteus_top.v ]
+set my_verilog_files [list ../common.v ../integer_ops/int_add.v ../fixed_point_ops/qtwosComp.v ../fixed_point_ops/qmult.v ../mult_piped.v ../nfu-1-pipe.v ../nfu-2-pipe.v ../nfu-3.v shifter.v rounder.v packer.v unpacker.v sb_unpacker.v nbin_unpacker.v nbout_packer.v ./proteus_top.v ]
 
 #/* Top-level Module                               */
-set my_toplevel proteus_top_pipeline
-#set my_toplevel base_top_pipeline
+#set my_toplevel proteus_top_pipeline
+set my_toplevel base_top_pipeline
 
 #/* The name of the clock pin. If no clock-pin     */
 #/* exists, pick anything                          */
 set my_clock_pin clk
 
 #/* Target frequency in MHz for optimization       */
-set my_clk_freq_MHz 500.0
+set my_clk_freq_MHz 1000.0
 
 #/* Delay of input signals (Clock-to-Q, Package etc.)  */
 #set my_input_delay_ns 0.1
@@ -81,20 +81,7 @@ set_switching_activity -static_probability 0.5 -toggle_rate 0.0078125 -base_cloc
 set_switching_activity -static_probability 0.015625 -toggle_rate 0.015625 -base_clock $my_clock_pin i_load_nbout
 set_switching_activity -static_probability 0.015625 -toggle_rate 0.015625 -base_clock $my_clock_pin i_nbout_nfu2_nfu3
 
-#set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_inputs
-#set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 1.02 i_sel
-
-#set_driving_cell  -lib_cell INVX1  [all_inputs]
-#set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 in_colors
-#set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 din_0
-#set_switching_activity -static_probability 0.5 -toggle_rate 1 -period 62.5 sel
-
-#set_switching_activity "" "" -base_clock $my_clock_pin signal
-#set_switching_activity -static_probability 0.5 -toggle_rate 0.5 -period 2 data_in
-#set_switching_activity -static_probability 0 rst
-#set_switching_activity -static_probability 0 new_frame
-#set_input_delay $my_input_delay_ns -reference_pin clk [remove_from_collection [all_inputs] clk]
-#set_output_delay $my_output_delay_ns -reference_pin clk [all_outputs]
+quit
 
 compile_ultra -no_seq_output_inversion
 

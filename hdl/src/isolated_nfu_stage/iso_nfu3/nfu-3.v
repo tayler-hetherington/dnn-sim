@@ -32,8 +32,10 @@ module sigmoid_op (
     //----------- Internal Signals -----------//
     
     // 3 internal pipeline stages
-    reg [(BIT_WIDTH - 1) : 0] reg0 [0 : 2];
-    reg [(BIT_WIDTH - 1) : 0] reg1 [0 : 1];
+    //reg [(BIT_WIDTH - 1) : 0] reg0 [0 : 2];
+    //reg [(BIT_WIDTH - 1) : 0] reg1 [0 : 1];
+    reg [(BIT_WIDTH - 1) : 0] reg_xi_stage_0;
+    reg [(BIT_WIDTH - 1) : 0] reg_xiai_bi_stage_1 [0 : 1];
     
     // Segment variables for piecewise sigmoid op
     wire [(BIT_WIDTH-1) : 0] ai_ram_out, bi_ram_out;
@@ -103,19 +105,23 @@ module sigmoid_op (
     );
     
     // Internal stage 1
+    // Store i_X in pipeline register, waiting for RAM read
     always @(posedge clk) begin  
-        reg0[0] <= i_X; 
-        reg0[1] <= ai_ram_out;
-        reg0[2] <= bi_ram_out;
+        reg_xi_stage_0 <= i_X;
+        //reg0[0] <= i_X; 
+        //reg0[1] <= ai_ram_out;
+        //reg0[2] <= bi_ram_out;
     end
     
     //----------- Stage 2: Multiplie X*ai -------------//
+    /*
     int_mult mul0 (
         reg0[0],
         reg0[1],
         xi_ai_mult
     );
-
+    */
+    
     /*
     qmult #(.Q(10), .N(16)) mul0 (
         reg0[0],
@@ -123,19 +129,36 @@ module sigmoid_op (
         xi_ai_mult
     );
     */
+    // Perform multiplication on Xi * Ai
+    qmult #(.Q(10), .N(16)) mul_xi_ai (
+        reg_xi_stage_0,
+        ai_ram_out,
+        xi_ai_mult
+    );
 
+    // Store result of Xi*Ai and Bi in ssecond stage pipeline register
     always @(posedge clk) begin
-        reg1[0] = xi_ai_mult;
-        reg1[1] = reg0[2];
+        //reg1[0] = xi_ai_mult;
+        //reg1[1] = reg0[2];
+        reg_xiai_bi_stage_1[0] <= xi_ai_mult;
+        reg_xiai_bi_stage_1[1] <= bi_ram_out;
     end
-
-    //--------- Stage 3: Add X*ai + bi -----------//
     
+    //--------- Stage 3: Add X*ai + bi -----------//
+
+    int_add add0 (
+        reg_xiai_bi_stage_1[0],
+        reg_xiai_bi_stage_1[1],
+        xi_ai_bi_add
+    );
+
+    /*
     int_add add0 (
         reg1[0],
         reg1[1],
         xi_ai_bi_add
     );
+    */
     
     /*
     qadd #(.Q(10), .N(16)) add0 (

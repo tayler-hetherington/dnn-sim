@@ -6,7 +6,7 @@
 // which includes sign extension for the inputs
 //----------------------------------------------//
 //----------------------------------------------//
-module nbin_unpacker (
+module nbin_unpacker_v2 (
         clk,
         i_in,
         i_load,
@@ -27,11 +27,11 @@ module nbin_unpacker (
     input [SHIFT_BITS-2:0]  i_n;    // reduced precision bit width
     input [BIT_WIDTH-1:0]   i_se;    // bit mask for sign extension
     input [BIT_WIDTH-1:0]   i_ze;    // bit mask for zero extension for fractional bits
-    output reg [BIT_WIDTH-1:0]  o_out;
+    output [BIT_WIDTH-1:0]  o_out;
 
     wire [BIT_WIDTH-1:0]    unpkr_out;
     wire sign_bit;
-    wire [BIT_WIDTH-1:0]    se_out;
+    reg [BIT_WIDTH-1:0]    se_out;
 
     unpacker unpkr(
             .clk(clk),
@@ -48,7 +48,8 @@ module nbin_unpacker (
         for (j=0; j<BIT_WIDTH; j=j+1) begin : gen_se
             always @(*) begin
                 if (i_se[j]) begin
-                    se_out[j] = sign_bit[j];
+                    //se_out[j] = sign_bit[j];
+                    se_out[j] = sign_bit;
                 end
                 else begin
                     se_out[j] = unpkr_out[j];
@@ -59,6 +60,6 @@ module nbin_unpacker (
 
     // zero extend for fractional bits
     assign o_out = se_out & i_ze;
-    assign o_out = se_out;
+    //assign o_out = se_out;
 
 endmodule

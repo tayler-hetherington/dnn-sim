@@ -32,12 +32,24 @@ module nbout_packer (
 
     wire [BIT_WIDTH-1:0] rounder_out;
 
-rounder rdr (
+    rounder rdr (
         .i_in(i_in),
         .i_n(i_n),
         .i_offset(i_offset),
         .o_out(rounder_out)
     );
+
+    // Bug fix for rounder not being fed into packer
+    packer pkr (
+        .clk(clk),
+        .i_in(rounder_out),
+        .i_s(i_s),
+        .i_load(i_load),
+        .i_row_sel(i_row_sel),
+        .o_out(o_out)
+    );
+
+    /*
 packer pkr (
         .clk(clk),
         .i_in(i_in),
@@ -46,4 +58,5 @@ packer pkr (
         .i_row_sel(i_row_sel),
         .o_out(o_out)
     );
+    */
 endmodule
