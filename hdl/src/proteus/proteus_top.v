@@ -65,9 +65,7 @@ module proteus_top_pipeline (
     input [SHIFT_BITS-2:0]  i_n;
     input [BIT_WIDTH-1:0]   i_se;
     input [BIT_WIDTH-1:0]   i_ze;
-
     input [BIT_WIDTH-1:0]   i_z;
-
     input [2*BIT_WIDTH-1:0] i_nbout_load;
     input                   i_nbout_row_sel;
     input [BIT_IDX-1 : 0 ]  i_nbout_n;
@@ -129,17 +127,6 @@ module proteus_top_pipeline (
                 .o_out(nbin_unpk_out[(i+1)*BIT_WIDTH - 1: i*BIT_WIDTH])
             );                  
 
-            /*
-            nbin_unpacker nb_unpk (
-                .clk(clk),
-                .i_in(nb_in_reg[(i+1)*BIT_WIDTH - 1 : i*BIT_WIDTH] ),
-                .i_load(i_load),
-                .i_s(i_s),
-                .i_n(i_n),
-                .i_se(i_se),
-                .o_out(nbin_unpk_out[(i+1)*BIT_WIDTH - 1: i*BIT_WIDTH])
-            );
-            */
         end
     endgenerate
 
