@@ -24,7 +24,7 @@ module top_level_test (
     reg [N-1:0]             data_reg;
     reg [ADDR_SIZE-1:0]     base_addr_reg;
 
-    compressor CMPR (
+    n4 CMPR (
         clk,
         rst,
         data_reg,

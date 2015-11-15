@@ -1,0 +1,10 @@
+*.log
+*.svf
+*.sh
+*.b
+*.sdc
+*.vh
+*.rep
+*.out
+*WORK*
+
