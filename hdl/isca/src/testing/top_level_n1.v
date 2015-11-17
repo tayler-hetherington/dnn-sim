@@ -1,40 +1,36 @@
 
 module top_level_test (
         clk,
-        i_nbin,
-        i_sb,
-        i_nbout,
+        i_vals,
         o_res
     );
 
     parameter N = 16;
+    parameter Tn = 16;
 
     // Inputs
     input                   clk;
-    input [N-1:0]           i_nbin, i_sb, i_nbout;
+    input [Tn*Tn*N-1:0]     i_vals;
     
     // Outputs
-    output [N-1:0]          o_res;
+    output [Tn*N-1:0]       o_res;
 
-    reg [N-1:0]             nbin_reg, sb_reg, nbout_reg;
-    reg [N-1:0]             res_reg;
+    reg [Tn*Tn*N-1:0]          vals_reg;
+    reg [Tn*N-1:0]             res_reg;
 
-    wire [N-1:0]            n1_out;
+    wire [Tn*N-1:0]            add_tree_out;
 
-    n1 MULT_ADD (
-        nbin_reg,
-        sb_reg,
-        nbout_reg,
-        n1_out
+    n1_cluster ADDER_TREES (
+        clk,
+        i_vals,
+        add_tree_out
     );
 
     always @(posedge clk) begin
-        nbin_reg    = i_nbin;
-        sb_reg      = i_sb;
-        nbout_reg   = i_nbout;
-        res_reg     = res_reg;
+        vals_reg    = i_vals;
+        res_reg     = add_tree_out;
     end
             
-
+    assign o_res = add_tree_out;
 
 endmodule

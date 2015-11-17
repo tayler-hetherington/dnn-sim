@@ -1,46 +1,41 @@
 
 module top_level_test (
         clk,
-        i_X,
-        i_coef,
-        i_load_coef,
-        o_Y
+        rst,
+        data,
+        base_addr,
+        f_addr,
+        offset
     );
 
     parameter N = 16;
+    parameter ADDR_SIZE = 16; // FIXME: Based on actual SRAM size
 
     // Inputs
-    input                   clk;
-    input [N-1:0]           i_X;
-    input [2*N-1:0]         i_coef;
-    input                   i_load_coef;
+    input                   clk, rst;
+    input [N-1:0]           data;
+    input [ADDR_SIZE-1:0]   base_addr;
     
     // Outputs
-    output [N-1:0]          o_Y;
- 
-    reg [N-1:0]             X_reg;
-    reg [2*N-1:0]           coef_reg;
-    reg                     load_coef_reg;
-    reg [N-1:0]             Y_reg;
+    output [ADDR_SIZE-1:0]  f_addr;
+    output [N-1:0]          offset;
 
-    wire [N-1:0]            n3_out;
+    
+    reg [N-1:0]             data_reg;
+    reg [ADDR_SIZE-1:0]     base_addr_reg;
 
-
-    assign o_Y = Y_reg;
-
-    n3  N3 (
+    n4 CMPR (
         clk,
-        X_reg,
-        coef_reg,
-        load_coef_reg,
-        n3_out
+        rst,
+        data_reg,
+        base_addr_reg,
+        f_addr,
+        offset
     );
 
     always @(posedge clk) begin
-        X_reg           = i_X;
-        coef_reg        = i_coef;
-        load_coef_reg   = i_load_coef;
-        Y_reg           = n3_out;
+        data_reg        = data;
+        base_addr_reg   = base_addr;
     end
             
 
