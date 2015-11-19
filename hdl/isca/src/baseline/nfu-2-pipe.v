@@ -94,7 +94,7 @@ module adder_array (
         for(j=0; j<W; j=j+1) begin : adder_array
             m_addr ADD_ARRAY (
                     i_vals  [ ((2*j)+1)*N - 1 : (2*j)*N       ],
-                    i_vals  [ ((2*j)+2)*N - 1 : ( (2*j)+1 )*N ],
+                    i_vals  [ ((2*j)+2)*N - 1 : ((2*j)+1)*N   ],
                     o_res   [ (j+1)*N - 1     : j*N           ]
             );
         end
@@ -132,9 +132,9 @@ module nfu_2_pipe (
         for(i=0; i<Tn; i=i+1) begin : ADDER_TREES
             Tn_adder_tree_pipe T (
                 clk,
-                i_nfu1_out[ ((i+1)*Tn*N) - 1  : (i*Tn*N)  ],
-                i_nbout[ ((i+1)*N) - 1  : (i*N) ],
-                o_nfu2_out [ ((i+1)*N) - 1  : (i*N) ]
+                i_nfu1_out[ ((i+1)*Tn*N) - 1 : (i*Tn*N) ],
+                i_nbout   [ ((i+1)*N) - 1    : (i*N) ],
+                o_nfu2_out[ ((i+1)*N) - 1    : (i*N) ]
             );
         end
     endgenerate
