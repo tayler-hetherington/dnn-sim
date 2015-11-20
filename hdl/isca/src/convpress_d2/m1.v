@@ -1,4 +1,4 @@
-module mem_64x256b (
+module m1 (
         clk,
         i_data,
         i_wen,

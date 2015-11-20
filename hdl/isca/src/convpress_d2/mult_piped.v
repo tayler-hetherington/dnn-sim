@@ -12,14 +12,13 @@ module mult_piped (
     input clk;     
     input [N-1:0] a_in, b_in;
     output [N-1:0] y_out;
-
+    
     wire [N-1:0] mult_out;
 
-
-    // Now pushing the pipeline registers UP to before the multipliers
-    // no additional pipelineing here. See if this still works
-
+    // Removing pipelineing here and pushing it up to the n1_unit level. Fixing synthesis propblem.
+    // Double check this is working.
     assign y_out = mult_out;
+
     m_mult MULT (
         a_in,
         b_in,
@@ -29,8 +28,6 @@ module mult_piped (
 
     /*
     reg [N-1 : 0] y_reg [NUM_PIPE_REGS-1 : 0];
-
-    wire [N-1:0] mult_out;
 
     // Registers after
     assign y_out = y_reg[1];
@@ -48,6 +45,41 @@ module mult_piped (
     end
     */
 
+
 endmodule
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+    //reg [N-1 : 0] a_reg [NUM_PIPE_REGS-1 : 0];
+    //reg [N-1 : 0] b_reg [NUM_PIPE_REGS-1 : 0]; 
+    m_mult MULT (
+        a_reg[1],
+        b_reg[1],
+        mult_out
+    );
+
+    // pipeline_stages
+    always @ (posedge clk) begin
+        a_reg[1] <= a_reg[0];
+        b_reg[1] <= b_reg[0];
+
+        // multiply result (a_in*b_in) appears after +clk
+        a_reg[0] <= a_in;
+        b_reg[0] <= b_in;
+    end
+    */

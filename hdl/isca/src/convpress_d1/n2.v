@@ -22,7 +22,7 @@ module n2_cluster(
     input   [Tn*N-1:0]  i_X;
     input   [2*N-1:0]   i_coef;
     input               i_load_coef;
-    input   [Tn*N-1:0]  o_Y;
+    output  [Tn*N-1:0]  o_Y;
 
     genvar i;
     generate

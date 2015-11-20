@@ -22,11 +22,11 @@ module mem_64x256b (
     wire [NxTn-1:0]     mem_out;
 
     // Necessary signals for the RF memory -> CEN = 0 so chip is enabled
-    wire [2:0]     ema  = 3'b000;
+    wire [2:0]     ema = 3'b000;
     wire           retn = 1'b1;
-    wire           cen  = 1'b0;
+    wire           cen = 1'b0;
 
-    // Tn*N-bit output (256-bits)
+    // N-bit output (256-bits)
     assign o_data = mem_out;
 
     // W-bit output (128-bits)

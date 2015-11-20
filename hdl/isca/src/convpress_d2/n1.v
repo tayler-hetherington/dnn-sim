@@ -1,9 +1,10 @@
 
-// This module implements a single 16-1 adder tree
+// This module implements a single 16-1 adder tree + accumulator
 
 module n1_cluster (
         clk,
         i_vals,
+        i_partial_sum,
         o_res
     );
 
@@ -12,9 +13,12 @@ module n1_cluster (
 
     input                       clk;
     input   [Tn*Tn*N-1:0]       i_vals;
+    input   [Tn*N-1:0]          i_partial_sum;
     output  [Tn*N-1:0]          o_res;
 
     wire    [Tn*Tn*N-1:0]       swizzle_vals;
+    wire    [Tn*N-1:0]          addr_tree_out;
+
 
     // Swizzle
     genvar i;
@@ -31,11 +35,21 @@ module n1_cluster (
             adder_tree TREE (
                 clk,
                 swizzle_vals[ (i+1)*Tn*N - 1 : i*Tn*N ],
-                o_res[ (i+1)*N-1 : i*N ]
+                addr_tree_out[ (i+1)*N-1 : i*N ]
             );
         end
     endgenerate
 
+    // Add the partial sum at the end
+    generate
+        for(i=0; i<Tn; i=i+1) begin : ACCUMULATORS
+            m_addr PARTIAL_SUM (
+                addr_tree_out [ (i+1)*N - 1 : i*N ],
+                i_partial_sum [ (i+1)*N - 1 : i*N ],
+                o_res         [ (i+1)*N - 1 : i*N ]
+            );
+        end
+    endgenerate
 
 endmodule
 
@@ -87,8 +101,8 @@ module adder_array (
     parameter W = 8;
     parameter N = 16;
 
-    input   [(2*W*N) - 1 : 0]       i_vals;
-    output  [(W*N) - 1 : 0]   o_res;
+    input   [(2*W*N) - 1 : 0]  i_vals;
+    output  [(W*N) - 1 : 0]    o_res;
 
 
     // Create W adders and add each pair of values from i_vals and store in o_res 
