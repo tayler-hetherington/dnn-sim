@@ -42,6 +42,7 @@ module nbin_unpacker_v2 (
         );
 
     assign sign_bit = unpkr_out[i_n-1];
+    //assign sign_bit = unpkr_out[9];
 
     genvar j;
     generate

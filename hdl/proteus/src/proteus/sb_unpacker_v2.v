@@ -3,8 +3,7 @@
 // Patrick Judd
 // 2015-09-02
 // This module is a wrapper for the unpacker
-// which includes zero extension for the weights
-// since weights are strictly between 0 and 1
+// which includes sign and zero extension for the weights
 //----------------------------------------------//
 //----------------------------------------------//
 module sb_unpacker_v2 (
@@ -43,6 +42,7 @@ module sb_unpacker_v2 (
     );
 
     assign sign_bit = unpkr_out[i_n-1];
+    //assign sign_bit = unpkr_out[9];
 
     genvar j;
     generate

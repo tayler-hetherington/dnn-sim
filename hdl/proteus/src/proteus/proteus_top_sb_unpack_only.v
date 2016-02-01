@@ -20,23 +20,11 @@ module proteus_top_pipeline_vMAX (
         i_nbout_nfu2_nfu3,      // Control signal to store partial nfu-2 or nfu-3 results to NBout
         i_op,                   // Average or MAX op select line (avg = 0, max = 1)
 
-        i_load_nbin,
-        i_s_nbin,
-        i_n_nbin,
-        i_se_nbin,
-        i_ze_nbin,
-        
         i_load_sb,
         i_s_sb,
         i_n_sb,
         i_se_sb,
         i_ze_sb,
-
-        i_nbout_s,
-        i_nbout_load,
-        i_nbout_row_sel,
-        i_nbout_n,
-        i_nbout_offset,
 
         o_nbout_packer_to_mem   // Output from NBout packer to memory?
     );
@@ -68,33 +56,17 @@ module proteus_top_pipeline_vMAX (
 
 
     // Proteus specific
-    input [1:0]                         i_load_nbin;
-    input [SHIFT_BITS-1:0]              i_s_nbin;
-    input [SHIFT_BITS-2:0]              i_n_nbin;
-    input [N-1:0]                       i_se_nbin;
-    input [N-1:0]                       i_ze_nbin;
-    
     input [1:0]                         i_load_sb;
     input [SHIFT_BITS-1:0]              i_s_sb;
     input [SHIFT_BITS-2:0]              i_n_sb;
     input [N-1:0]                       i_se_sb;
     input [N-1:0]                       i_ze_sb;
 
-    input [SHIFT_BITS-1:0]              i_nbout_s;
-    input [2*N-1:0]                     i_nbout_load;
-    input                               i_nbout_row_sel;
-    input [BIT_IDX-1 : 0 ]              i_nbout_n;
-    input [BIT_IDX-1:0]                 i_nbout_offset;
-
     //----------- Output Ports ---------------//
     output [((N*Tn) - 1):0]             o_nbout_packer_to_mem;
-    wire [((N*Tn) - 1):0]               nbout_to_packer;
-
-    wire [((N*Tn) - 1):0]               out_wire;
 
     //----------- Internal Signals --------------//
     
-    wire [ (N*Tn) - 1 : 0 ]             nbin_unpk_out;
     wire [ (N*TnxTn) - 1 : 0 ]          sb_unpk_out;
 
     wire [ (N*Tn) - 1 : 0 ]             nbout_pk_out;
@@ -130,21 +102,6 @@ module proteus_top_pipeline_vMAX (
     // to account for the extra hardware. 
     genvar i;
     generate
-        for(i=0; i<Tn; i=i+1) begin : nb_unpack_gen
-            nbin_unpacker_v2 nb_unpk_v2 (
-                .clk(clk),
-                .i_in(i_inputs[(i+1)*N - 1 : i*N] ),
-                .i_load(i_load_nbin),
-                .i_s(i_s_nbin),
-                .i_n(i_n_nbin),
-                .i_se(i_se_nbin),
-                .i_ze(i_ze_nbin),
-                .o_out(nbin_unpk_out[(i+1)*N - 1: i*N])
-            );                  
-        end
-    endgenerate
-
-    generate
         for(i=0; i<TnxTn; i=i+1) begin : sb_unpack_gen
             sb_unpacker_v2 sb_unpk_v2 (
                 .clk(clk),
@@ -159,24 +116,7 @@ module proteus_top_pipeline_vMAX (
         end
     endgenerate
 
-    generate
-        for(i=0; i<Tn; i=i+1) begin : nb_pack_gen
-            nbout_packer nb_pk (
-                .clk(clk),
-                .i_in( nbout_to_packer[(i+1)*N - 1 : i*N ]),
-                .i_s(i_nbout_s),
-                .i_load(i_nbout_load),
-                .i_row_sel(i_nbout_row_sel),
-                .i_n(i_nbout_n),
-                .i_offset(i_nbout_offset),
-                .o_out(out_wire[(i+1)*N - 1: i*N])
-            );           
-        end
-    endgenerate
-
-    assign nbout_to_packer = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
-
-    assign  o_nbout_packer_to_mem = out_wire;
+    assign o_nbout_packer_to_mem = (i_nbout_nfu2_nfu3) ? nfu2_out : nfu3_out;
 
     // Either load NBout (with partial sum) into the nfu2_nfu3_pipe 
     // reg or store the result of nfu2_out.    
@@ -188,7 +128,7 @@ module proteus_top_pipeline_vMAX (
     // NFU-1 (3 internal pipeline stages)
     nfu_1_pipe N1 ( 
         clk, 
-        nbin_unpk_out, 
+        i_inputs, 
         sb_unpk_out, 
         nfu1_out
     );
