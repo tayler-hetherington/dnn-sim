@@ -13,7 +13,7 @@ module m_addr (
 
 
     //------------ Change adder implementation here ----------------//
-    // Integer add (Should be close enough in area to a fixed-point adder)
+    // Integer add (Approx. area to a fixed-point adder)
     assign o_C = i_A + i_B;
 
 endmodule

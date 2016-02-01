@@ -84,9 +84,11 @@ module n2 (
     end
 
 
-    // FIXME: Need to figure out what to do with the segment boundary muxes. 
-    //          Xi and Xi+1 are hardwired, but there are only 16 segments, 
-    //          Which means we only need 4 bits to choose Ai and Bi...
+    // FIXME: Need to figure out what to do with the segment boundary muxes.
+    //          DianNao has 2 16-to-1, 16-bit muxes. Xi and Xi+1 are hardwired,
+    //          but there are only 16 segments, so should only need 4-bits for the
+    //          coefficient RAM address. Currently just place-holder muxes for
+    //          area/power estimations.  
     mux_16_to_1 mux0 (
         i_X[(N-1) : ((N-1)-3)],
         16'b0000000000000000,
