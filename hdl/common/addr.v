@@ -9,7 +9,7 @@ module m_addr (
     parameter N = 16;
 
     input [N-1:0] i_A, i_B;
-    output [N:0] o_C;
+    output [N-1:0] o_C;
 
 
     //------------ Change adder implementation here ----------------//

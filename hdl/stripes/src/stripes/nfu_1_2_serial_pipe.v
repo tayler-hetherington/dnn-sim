@@ -240,7 +240,7 @@ module nfu_1_2_serial_pipe (
         clk,
         reset,
         i_first_cycle,
-		  i_precision,
+		i_precision,
         i_neurons,
         i_synapses,
         i_nbout,
