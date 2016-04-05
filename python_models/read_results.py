@@ -208,4 +208,3 @@ avg = y_rel.mean(2)
 print "Avg"
 print avg
 
-sys.exit()

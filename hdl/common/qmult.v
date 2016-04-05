@@ -56,7 +56,7 @@ module qmult(
 	always @(a_mult,b_mult)
 	begin
 		result <= a_mult * b_mult;
-	end;
+	end
 	
 	always @(result,r_ext)
 	begin		
