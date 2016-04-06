@@ -85,18 +85,18 @@ module transposer_array (
   
     input clk; 
     input [ ARRAY_SIZE - 1 : 0 ] i_enable;
-    input [ SEL_BITS - 1 : 0 ] i_sel;
+    input [ SEL_BITS*ARRAY_SIZE - 1 : 0 ] i_sel;
     input [ ARRAY_SIZE * BL - 1 : 0 ] i_data;
     wire [ ARRAY_SIZE * BL - 1 : 0 ] q;
     output [ ARRAY_SIZE * WORDS - 1 : 0 ] o_stream;
 
     genvar i;
     generate
-      for (i=0; i<ARRAY_SIZE; i=i+1) begin
+      for (i=0; i<ARRAY_SIZE; i=i+1) begin : TRANS_ARRAY
         transposer TRANS(
             clk,
             i_enable[i],
-            i_sel,
+            i_sel[(i+1)*SEL_BITS-1 : i*SEL_BITS],
             i_data[ (i+1)*BL-1 : i*BL ],
             o_stream[ (i+1)*WORDS-1 : i*WORDS ]
           );

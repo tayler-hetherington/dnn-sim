@@ -2,6 +2,9 @@
 module dispatcher (
         clk,    // Main clock
         i_mem,  // memory bus in
+        i_sel,
+        i_enable,
+        i_read_buf,
         o_stream // serial output stream
     );
 
@@ -20,11 +23,11 @@ module dispatcher (
     input       [ SEL_BITS*PARALLEL_WINDOWS -1 : 0 ]  i_sel; // select the bit to be output
     input       [ PARALLEL_WINDOWS -1 : 0 ]           i_enable; // enable mask for each brick
     input                                             i_read_buf; // select current buffer to read
-    output      [ SW - 1 : 0 ]                        o_stream;
+    output reg  [ SW - 1 : 0 ]                        o_stream;
 
     wire        [ PARALLEL_WINDOWS * BL - 1 : 0 ]     shuffle_out;
-    wire        [ PARALLEL_WINDOWS -1 : 0 ]           b0_enable; // enable mask for each brick
-    wire        [ PARALLEL_WINDOWS -1 : 0 ]           b1_enable; // enable mask for each brick
+    reg         [ PARALLEL_WINDOWS -1 : 0 ]           b0_enable; // enable mask for each brick
+    reg         [ PARALLEL_WINDOWS -1 : 0 ]           b1_enable; // enable mask for each brick
     wire        [ SW - 1 : 0 ]                        b0_out;
     wire        [ SW - 1 : 0 ]                        b1_out;
 
