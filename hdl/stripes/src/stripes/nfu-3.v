@@ -15,18 +15,30 @@ module nfu_3 (
         i_nfu2_out,
         i_coef,
         i_load_coef,
+        i_max,
+        i_min,
+        i_offset,
         o_nfu3_out
     );
 
     parameter N  = 16;
     parameter Tn = 16;
+    parameter BIT_IDX = 4;
     
     input                       clk;
     input                       i_load_coef;
     input [((2*N)-1):0]         i_coef;
     
     input [ (Tn*N) - 1 : 0 ]    i_nfu2_out;
+
+    // control signals for rounder
+    input [N-1:0]           i_max;
+    input [N-1:0]           i_min;
+    input [BIT_IDX-1:0]     i_offset;  
+
     output [ (Tn*N) - 1 : 0 ]   o_nfu3_out;
+
+    wire [ (Tn*N) - 1 : 0 ]   sigmoid_out;
     
     genvar i;
     generate
@@ -36,8 +48,17 @@ module nfu_3 (
                 i_nfu2_out[ ((i+1)*N) - 1 : (i*N) ],
                 i_coef,
                 i_load_coef,
-                o_nfu3_out[ ((i+1)*N) - 1 : (i*N) ]
+                //o_nfu3_out[ ((i+1)*N) - 1 : (i*N) ]
+                sigmoid_out[ ((i+1)*N) - 1 : (i*N) ]
             );
+            // Patrick: adding rounder here for stripes
+            rounder rnd (
+                sigmoid_out[ ((i+1)*N) - 1 : (i*N) ],
+                i_max,
+                i_min,
+                i_offset,
+                o_nfu3_out[ ((i+1)*N) - 1 : (i*N) ]
+              );
         end
     endgenerate
     
@@ -70,8 +91,8 @@ module sigmoid_op (
     //----------- Internal Signals -----------//
 
     // Internal pipeline stages
-    reg [(N - 1) : 0]   reg_xi_stage_0;
-    reg [(N - 1) : 0]   reg_xiai_bi_stage_1 [0 : 1];
+    reg  [(N - 1) : 0]   reg_xi_stage_0;
+    reg  [(N - 1) : 0]   reg_xiai_bi_stage_1 [0 : 1];
 
     // Segment variables for piecewise sigmoid op
     wire [(N-1) : 0]    ai_ram_out, bi_ram_out;
@@ -89,6 +110,8 @@ module sigmoid_op (
         reg_xiai_bi_stage_1[0]  <= xi_ai_mult;
         reg_xiai_bi_stage_1[1]  <= bi_ram_out;
     end
+
+
 
 
     // FIXME: Need to figure out what to do with the segment boundary muxes.
