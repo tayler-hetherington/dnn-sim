@@ -107,10 +107,10 @@ module Tn_adder_tree_pipe (
     //----------- Internal Signals ---------------//
 
     // Adder tree connection wires
-    wire [ (Tn*(N+1)/2)-1 : 0 ]        level_0_out;    // 8 buses
-    wire [ (Tn*(N+2)/4)-1 : 0 ]        level_1_out;    // 4 busses
-    wire [ (Tn*(N+3)/8)-1 : 0 ]        level_2_out;    // 2 busses
-    wire [ (Tn*(N+4)/16)-1 : 0 ]       level_3_out;    // 1 bus
+    wire [ (Tn/2 *(N+1))-1 : 0 ]        level_0_out;    // 8 busses
+    wire [ (Tn/4 *(N+2))-1 : 0 ]        level_1_out;    // 4 busses
+    wire [ (Tn/8 *(N+3))-1 : 0 ]        level_2_out;    // 2 busses
+    wire [ (Tn/16*(N+4))-1 : 0 ]        level_3_out;    // 1 bus
     
     wire [ (N-1) : 0 ]              partial_sum_out; // 1 bus from partial sum add
     
@@ -157,6 +157,7 @@ module serial_ip_pipe (
                 clk,
                 reset,
                 i_first_cycle,
+                i_max,
 					      i_precision,
                 i_neurons,
                 i_synapses,
@@ -175,15 +176,16 @@ module serial_ip_pipe (
     input clk;
     input reset;
     input i_first_cycle;
+    input i_max;
 	 input [4:0] i_precision;
     input [Ti-1:0] i_neurons;
     //input [Ti-1:0][N-1:0] i_synapses;
     input [Ti*N-1:0] i_synapses;
     input [N-1:0] i_nbout;
 
-    output [N-1:0] o_nfu2_out;
+    output reg [N-1:0] o_nfu2_out;
 
-	 reg [2*N-1:0] acc_out;
+    reg [2*N-1:0] acc_out;
 
 	 
     //wire [Ti-1:0][N-1:0] and_out;
@@ -191,6 +193,7 @@ module serial_ip_pipe (
     //wire [Tn-1:0][N-1:0] complement_out;
     wire [ (Tn*N)-1 : 0 ]           complement_out;
     wire [N+4-1:0] tree_out;
+    wire [31:0] tree_out_se;
 
     // 1. 1 bit multiplication (and)
     genvar i;
@@ -217,19 +220,26 @@ module serial_ip_pipe (
     Tn_adder_tree_pipe tree(
         clk,
         complement_out,         
-        //i_nbout,        
         tree_out
     );
+    assign tree_out_se = {{12{tree_out[19]}},tree_out}; // sign extend
 
     // 4. accumulator
     always @(posedge clk) begin
       if (reset)
         acc_out <= {16'b0,i_nbout};
+      else if (i_first_cycle)
+        acc_out <= tree_out_se + {16'b0,i_nbout};
       else
-        acc_out <= {{12{tree_out[19]}},tree_out} + (acc_out << 1);
+        acc_out <= tree_out_se + (acc_out << 1);
     end
-    
-	 assign o_nfu2_out[N-1:0] = acc_out[N-1:0];
+  
+  always @ (*) begin
+    if (i_max)
+      o_nfu2_out[N-1:0] <= (acc_out[N-1:0] > i_nbout)? acc_out[N-1:0] : i_nbout;
+    else
+      o_nfu2_out[N-1:0] <= acc_out[N-1:0];
+  end
 
 endmodule
 
@@ -240,7 +250,8 @@ module nfu_1_2_serial_pipe (
         clk,
         reset,
         i_first_cycle,
-		i_precision,
+		    i_precision,
+        i_max,
         i_neurons,
         i_synapses,
         i_nbout,
@@ -255,11 +266,12 @@ module nfu_1_2_serial_pipe (
     //----------- Input Ports ---------------//
     input clk;
     input reset;
-    input i_first_cycle; // control signal, indicating MSB
+    input i_first_cycle;  // control signal, indicating MSB
+    input i_max;          // control signal, for max pooling mode
     input [4:0] i_precision;
-    input [ ((1*Tw*Tn) - 1) : 0 ]      i_neurons; // neurons are fed in serially
+    input [ ((1*Tw*Tn) - 1) : 0 ]      i_neurons;   // neurons are fed in serially
     input [ ((N*Tn*Tn) - 1) : 0 ]      i_synapses;
-    input [ ((N*Tw*Tn) - 1) : 0 ]      i_nbout; // feedback path
+    input [ ((N*Tw*Tn) - 1) : 0 ]      i_nbout;     // feedback path
     //input [Tw-1:0][Ti-1:0]      i_neurons;
     //input [Tn-1:0][Ti-1:0][N-1:0]      i_synapses;
     //input [Tw-1:0][Tn-1:0][N-1:0]      i_nbout; // feedback path
@@ -291,6 +303,7 @@ module nfu_1_2_serial_pipe (
                 clk,
                 reset,
                 i_first_cycle,
+                i_max,
                 i_precision,
                 //i_neurons   [w]   [Ti-1:0],
                 i_neurons   [ Ti*(w+1) - 1 : Ti*w ],
