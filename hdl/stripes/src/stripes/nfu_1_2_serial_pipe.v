@@ -47,11 +47,16 @@ module adder_array (
     genvar j;
     generate
         for(j=0; j<W; j=j+1) begin : adder_array
-            m_addr #(N) ADD_ARRAY (
-                    i_vals  [ ((2*j)+1)*N - 1 : (2*j)*N       ],
-                    i_vals  [ ((2*j)+2)*N - 1 : ((2*j)+1)*N   ],
-                    o_res   [ (j+1)*(N+1) - 1     : j*(N+1)   ]
-            );
+            
+            // want an adder where the carry out bit is kept
+            assign o_res   [ (j+1)*(N+1) - 1     : j*(N+1)   ] = 
+                    {1'b0, i_vals  [ ((2*j)+1)*N - 1 : (2*j)*N       ]} + 
+                    {1'b0, i_vals  [ ((2*j)+2)*N - 1 : ((2*j)+1)*N   ]};
+            //m_addr #(N) ADD_ARRAY (
+                    //i_vals  [ ((2*j)+1)*N - 1 : (2*j)*N       ],
+                    //i_vals  [ ((2*j)+2)*N - 1 : ((2*j)+1)*N   ],
+                    //o_res   [ (j+1)*(N+1) - 1     : j*(N+1)   ]
+            //);
         end
     endgenerate
 endmodule
