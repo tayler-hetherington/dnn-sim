@@ -18,6 +18,8 @@ module top_stripes_node (
         i_first_cycle,
         i_precision,
         i_mux_sel,
+        i_max,
+        i_load,
         o_to_nbout
     );
 
@@ -33,10 +35,10 @@ module top_stripes_node (
     //----------- Input Ports ---------------//
     input                       clk;
     input                       reset;
-
+    input                       i_max;
     // i_inputs is a vector of Tn (16) values, 16-bits each
     input [((N*Tn) - 1):0]      i_inputs;
-
+    input [ Tw - 1 : 0 ]        i_load;
 
     // i_synapses is a matrix of Tn x Tn (16x16=256) values, 16-bits each (Row-major).
     input [((N*TnxTn) - 1):0]   i_synapses;
@@ -59,28 +61,64 @@ module top_stripes_node (
     wire [(N*Tn)-1:0]        mux_to_nbout;
 
     
-    
+    /*
+    reg                       i_max_reg;  //
+    reg [((N*Tn) - 1):0]      i_inputs_reg; //
+    reg [((N*TnxTn) - 1):0]   i_synapses_reg; //
+    reg[(N*Tn*Tw)-1:0]        i_nbout_reg; //
+    reg                       i_first_cycle_reg;  //
+    reg [4:0]                 i_precision_reg;
+    reg[3:0]                 i_mux_sel_reg;
+    reg [((N*Tn) - 1):0]     o_to_nbout_reg; // 
+    */
+
     //------------- Code Start -----------------//
-    assign o_to_nbout       = mux_to_nbout;
+    //assign o_to_nbout       = o_to_nbout_reg;
+    assign o_to_nbout = mux_to_nbout;
     
 
     //--------------------------------------------------// 
     //-------------- Main Pipeline Stages --------------//
-    //--------------------------------------------------// 
-    
+    //--------------------------------------------------//
+    /*
+    always @(posedge clk) begin
+        i_inputs_reg        <= i_inputs;
+        i_synapses_reg      <= i_synapses;
+        i_nbout_reg         <= i_nbout;
+        i_first_cycle_reg   <= i_first_cycle;
+        i_precision_reg     <= i_precision;
+        i_mux_sel_reg       <= i_mux_sel;
+        i_max_reg           <= i_max;
+        o_to_nbout_reg      <= mux_to_nbout;
+    end
+    */
 
     // NFU_1_2_serial_pipe
+    /*
+    nfu_1_2_serial_pipe MAIN_PIPE_STAGE (
+        clk,
+        reset,
+        i_first_cycle_reg,
+        i_precision_reg,
+        i_max_reg,
+        i_inputs_reg,
+        i_synapses_reg,
+        i_nbout_reg,
+        nfu1_2_serial_out
+    );
+    */
     nfu_1_2_serial_pipe MAIN_PIPE_STAGE (
         clk,
         reset,
         i_first_cycle,
         i_precision,
+        i_max,
+        i_load,
         i_inputs,
         i_synapses,
         i_nbout,
         nfu1_2_serial_out
     );
-   
     genvar i;
 
     generate

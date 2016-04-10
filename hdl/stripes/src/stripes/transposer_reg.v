@@ -90,15 +90,32 @@ module transposer_array (
     wire [ ARRAY_SIZE * BL - 1 : 0 ] q;
     output [ ARRAY_SIZE * WORDS - 1 : 0 ] o_stream;
 
+    reg [ ARRAY_SIZE - 1 : 0 ] i_enable_reg;
+    reg [ SEL_BITS - 1 : 0 ] i_sel_reg;
+    reg [ ARRAY_SIZE * BL - 1 : 0 ] i_data_reg;
+    reg [ ARRAY_SIZE * WORDS - 1 : 0 ] o_stream_reg;
+
+    wire [ ARRAY_SIZE * WORDS - 1 : 0 ] o;
+
+
+    assign o_stream = o_stream_reg;
+    always @(posedge clk) begin
+        i_enable_reg <= i_enable;
+        i_sel_reg <= i_sel;
+        i_data_reg <= i_data;
+        o_stream_reg <= o;
+    end
+
+
     genvar i;
     generate
       for (i=0; i<ARRAY_SIZE; i=i+1) begin : TRANS_ARRAY
         transposer TRANS(
             clk,
-            i_enable[i],
-            i_sel,
-            i_data[ (i+1)*BL-1 : i*BL ],
-            o_stream[ (i+1)*WORDS-1 : i*WORDS ]
+            i_enable_reg[i],
+            i_sel_reg,
+            i_data_reg[ (i+1)*BL-1 : i*BL ],
+            o[ (i+1)*WORDS-1 : i*WORDS ]
           );
       end
     endgenerate

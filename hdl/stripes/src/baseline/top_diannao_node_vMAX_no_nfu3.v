@@ -49,13 +49,17 @@ module top_diannao_node_vMAX_no_nfu3 (
     // Main pipeline registers
     reg [((N*TnxTn) - 1):0]     nfu1_nfu2_pipe_reg;
 
-    
+    reg [((N*Tn) - 1):0]      i_inputs_reg;
+    reg [((N*Tn) - 1):0]      i_nbout_reg;
+    reg [((N*TnxTn) - 1):0]   i_synapses_reg;
+    reg                       i_op_reg;
+    reg [((N*Tn) - 1):0]      nfu2_out_reg;
     //------------- Code Start -----------------//
 
     // Depending on current state, either write NFU-2 partial sum 
     // or NFU-3 final results to NBout
 
-    assign o_to_nbout       = nfu2_out;
+    assign o_to_nbout       = nfu2_out_reg;
 
 
     //--------------------------------------------------// 
@@ -66,8 +70,8 @@ module top_diannao_node_vMAX_no_nfu3 (
     // FIXME: Still need to verify that this is automatically pipelining 
     nfu_1_pipe n1( 
         clk, 
-        i_inputs, 
-        i_synapses,
+        i_inputs_reg, 
+        i_synapses_reg,
         nfu1_out
     );
 
@@ -75,8 +79,8 @@ module top_diannao_node_vMAX_no_nfu3 (
     nfu_2_pipe_vMAX n2(
         clk, 
         nfu1_nfu2_pipe_reg, 
-        i_nbout, 
-        i_op,
+        i_nbout_reg, 
+        i_op_reg,
         nfu2_out
     );
     
@@ -85,6 +89,13 @@ module top_diannao_node_vMAX_no_nfu3 (
     always @(posedge clk) begin
         // Load the inputs from the SRAMs to the internal registers
         nfu1_nfu2_pipe_reg      <= nfu1_out;
+
+        i_inputs_reg <= i_inputs;
+        i_synapses_reg <= i_synapses;
+        i_nbout_reg <= i_nbout;
+        i_op_reg <= i_op;
+
+        nfu2_out_reg <= nfu2_out;
     end
 
     //--------------------------------------------------// 
