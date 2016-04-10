@@ -163,6 +163,7 @@ module serial_ip_pipe (
                 reset,
                 i_first_cycle,
                 i_max,
+					      i_load,
 					      i_precision,
                 i_neurons,
                 i_synapses,
@@ -182,7 +183,8 @@ module serial_ip_pipe (
     input reset;
     input i_first_cycle;
     input i_max;
-	 input [4:0] i_precision;
+    input i_load;
+	  input [4:0] i_precision;
     input [Ti-1:0] i_neurons;
     //input [Ti-1:0][N-1:0] i_synapses;
     input [Ti*N-1:0] i_synapses;
@@ -191,6 +193,7 @@ module serial_ip_pipe (
     output reg [N-1:0] o_nfu2_out;
 
     reg [2*N-1:0] acc_out;
+    reg [Ti*N-1:0] synapses;
 
 	 
     //wire [Ti-1:0][N-1:0] and_out;
@@ -200,6 +203,12 @@ module serial_ip_pipe (
     wire [N+4-1:0] tree_out;
     wire [31:0] tree_out_se;
 
+    // latch the synapses (needed for FC layers)
+    always @(*) 
+      if (~clk & i_load)
+        synapses = i_synapses;
+
+
     // 1. 1 bit multiplication (and)
     genvar i;
     genvar b;
@@ -207,7 +216,7 @@ module serial_ip_pipe (
         for(i=0; i<Ti; i=i+1) begin : and_gates1
           for(b=0; b<N; b=b+1) begin : and_gates2
             //assign and_out[i][N-1:0] = i_synapses[i][N-1:0] & i_neurons[i];
-            assign and_out[i*N + b] = i_synapses[i*N + b] & i_neurons[i];
+            assign and_out[i*N + b] = synapses[i*N + b] & i_neurons[i];
           end
         end
     endgenerate
@@ -232,7 +241,7 @@ module serial_ip_pipe (
     // 4. accumulator
     always @(posedge clk) begin
       if (reset)
-        acc_out <= {16'b0,i_nbout};
+        acc_out <= 0;
       else if (i_first_cycle)
         acc_out <= tree_out_se + {16'b0,i_nbout};
       else
@@ -257,6 +266,7 @@ module nfu_1_2_serial_pipe (
         i_first_cycle,
 		    i_precision,
         i_max,
+        i_load,
         i_neurons,
         i_synapses,
         i_nbout,
@@ -273,6 +283,7 @@ module nfu_1_2_serial_pipe (
     input reset;
     input i_first_cycle;  // control signal, indicating MSB
     input i_max;          // control signal, for max pooling mode
+    input [ Tw - 1 : 0 ] i_load;          // control signal, for max pooling mode
     input [4:0] i_precision;
     input [ ((1*Tw*Tn) - 1) : 0 ]      i_neurons;   // neurons are fed in serially
     input [ ((N*Tn*Tn) - 1) : 0 ]      i_synapses;
@@ -309,6 +320,7 @@ module nfu_1_2_serial_pipe (
                 reset,
                 i_first_cycle,
                 i_max,
+                i_load[w],
                 i_precision,
                 //i_neurons   [w]   [Ti-1:0],
                 i_neurons   [ Ti*(w+1) - 1 : Ti*w ],
