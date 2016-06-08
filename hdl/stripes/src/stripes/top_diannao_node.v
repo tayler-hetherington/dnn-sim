@@ -1,6 +1,6 @@
 //----------------------------------------------//
 //----------------------------------------------//
-// Top level pipeline. 
+// Top level pipeline for the baseline 
 // Instantiates each of the pipeline stages, registers
 // and necessary control signals.
 // Tayler Hetherington

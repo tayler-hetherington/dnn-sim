@@ -1,6 +1,6 @@
 //----------------------------------------------//
 //----------------------------------------------//
-// Top level pipeline. 
+// Top level pipeline for stripes, includes only nfu_1_2_serial_pipe 
 // Instantiates each of the pipeline stages, registers
 // and necessary control signals.
 // Tayler Hetherington

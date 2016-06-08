@@ -141,6 +141,9 @@ module top_stripes_node (
         end
     endgenerate
 
+    // There should be NBout between nfu1-2 and nfu3, ignoring for now and
+    // getting numbers from CACTI
+
     nfu_3 NFU3 (
         clk,    
         mux_out, //i_nfu2_out,
