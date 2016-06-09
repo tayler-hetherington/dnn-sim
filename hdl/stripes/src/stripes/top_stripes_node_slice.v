@@ -63,7 +63,8 @@ module top_stripes_node (
     input [BIT_IDX-1:0]     i_offset;  
 
     //----------- Output Ports ---------------//
-    output [((N*Tn) - 1):0]     o_to_bus;
+    //output [((N*Tn) - 1):0]     o_to_bus;
+    output [((N*Tw*Tn) - 1):0]     o_to_bus;
 
     //----------- Internal Signals --------------//
     // Wires
@@ -85,6 +86,7 @@ module top_stripes_node (
     //------------- Code Start -----------------//
     //assign o_to_nbout   = o_to_nbout_reg;
     //assign o_to_bus     = mux_to_nbout;
+    assign o_to_bus     = nfu1_2_serial_out;
     
 
     //--------------------------------------------------// 
